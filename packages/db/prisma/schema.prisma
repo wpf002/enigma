@@ -1,5 +1,6 @@
-// Enigma — schema skeleton.
-// Raw layer is immutable and verbatim. Every downstream layer is derivable.
+// Enigma — claim store.
+// Raw layer is immutable and verbatim. Every downstream layer is derivable
+// from raw + rule version, so a rebuild is always possible.
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,14 +14,135 @@ datasource db {
 model Snapshot {
   id          String   @id @default(cuid())
   aactVersion String
+  /// AACT_DUMP (pg_restore of a CTTI dump) | CTGOV_API_SUBSET (AACT-shaped subset built from the public API)
+  source      String   @default("AACT_DUMP")
+  area        String   @default("t2d-cv")
   fetchedAt   DateTime
   checksum    String
+  studyCount  Int      @default(0)
+  previousId  String?
+  createdAt   DateTime @default(now())
+
+  rawStudies      RawStudy[]
+  rawOutcomes     RawOutcomeMeasure[]
+  rawAnalyses     RawOutcomeAnalysis[]
+  deltas          SnapshotDelta[]
+  trials          Trial[]
+  effectRecords   EffectRecord[]
+  edges           ComparabilityEdge[]
+  clusters        Cluster[]
+  contradictions  Contradiction[]
+  dossiers        Dossier[]
+  alerts          Alert[]
+  runs            PipelineRun[]
+
+  @@unique([aactVersion])
+}
+
+// ------------------------------------------------------------------ raw layer
+// Verbatim AACT rows grouped per trial / outcome / analysis. UPDATE, DELETE and
+// TRUNCATE are rejected by triggers (see migration raw_immutability).
+
+/// ctgov.studies row plus its trial-level child rows, verbatim.
+model RawStudy {
+  id          String   @id @default(cuid())
+  snapshotId  String
+  snapshot    Snapshot @relation(fields: [snapshotId], references: [id])
+  nctId       String
+  payload     Json
+  /// sha256 over the trial's study, outcome and analysis payloads.
+  contentHash String
+  createdAt   DateTime @default(now())
+
+  @@unique([snapshotId, nctId])
+  @@map("raw_study")
+}
+
+/// ctgov.outcomes row plus its outcome_measurements and outcome_counts rows.
+model RawOutcomeMeasure {
+  id            String   @id @default(cuid())
+  snapshotId    String
+  snapshot      Snapshot @relation(fields: [snapshotId], references: [id])
+  nctId         String
+  aactOutcomeId String
+  payload       Json
+  createdAt     DateTime @default(now())
+
+  @@unique([snapshotId, aactOutcomeId])
+  @@index([snapshotId, nctId])
+  @@map("raw_outcome_measure")
+}
+
+/// ctgov.outcome_analyses row plus its outcome_analysis_groups rows.
+model RawOutcomeAnalysis {
+  id             String   @id @default(cuid())
+  snapshotId     String
+  snapshot       Snapshot @relation(fields: [snapshotId], references: [id])
+  nctId          String
+  aactOutcomeId  String
+  aactAnalysisId String
+  payload        Json
+  createdAt      DateTime @default(now())
+
+  @@unique([snapshotId, aactAnalysisId])
+  @@index([snapshotId, nctId])
+  @@map("raw_outcome_analysis")
+}
+
+/// Per-trial difference between a snapshot and its predecessor.
+model SnapshotDelta {
+  id           String   @id @default(cuid())
+  snapshotId   String
+  snapshot     Snapshot @relation(fields: [snapshotId], references: [id])
+  nctId        String
+  /// ADDED | CHANGED | REMOVED
+  kind         String
+  previousHash String?
+  currentHash  String?
+  createdAt    DateTime @default(now())
+
+  @@unique([snapshotId, nctId])
+  @@index([snapshotId, kind])
+}
+
+// -------------------------------------------------------------- derived layer
+
+/// Harmonized trial profile: population encoding, arms, stop reason.
+model Trial {
+  id          String   @id @default(cuid())
+  snapshotId  String
+  snapshot    Snapshot @relation(fields: [snapshotId], references: [id])
+  nctId       String
+
+  title        String
+  acronym      String?
+  status       String
+  phase        String?
+  enrollment   Int?
+  startDate    DateTime?
+  completionDate DateTime?
+  resultsPostedDate DateTime?
+  sponsor      String?
+  sponsorClass String?
+  allocation   String?
+  masking      String?
+  whyStopped   String?
+  /// FUTILITY | SAFETY | ENROLLMENT | BUSINESS | OTHER | null when completed
+  stopCategory String?
+
+  /// PopulationProfile (encoded eligibility + baseline characteristics)
+  population     Json
+  populationHash String
+  /// HarmonizedArm[]
+  arms           Json
+
+  ruleVersion String
   createdAt   DateTime @default(now())
 
   effectRecords EffectRecord[]
-  contradictions Contradiction[]
 
-  @@unique([aactVersion])
+  @@unique([snapshotId, nctId])
+  @@index([nctId])
 }
 
 /// Normalized effect size. Never a bare float.
@@ -28,72 +150,256 @@ model EffectRecord {
   id         String   @id @default(cuid())
   snapshotId String
   snapshot   Snapshot @relation(fields: [snapshotId], references: [id])
+  trialId    String
+  trial      Trial    @relation(fields: [trialId], references: [id])
 
   nctId            String
   outcomeMeasureId String
   analysisId       String?
+  /// ANALYSIS (posted outcome_analyses row) | DERIVED_ARMS (computed from arm-level measurements)
+  sourceKind       String
+
+  outcomeTitle String
+  outcomeType  String?
+  timeFrame    String?
+  units        String?
 
   measure          String   // OR | RR | RD | HR | MD | SMD
   value            Decimal  @db.Decimal(18, 8)
   ciLow            Decimal? @db.Decimal(18, 8)
   ciHigh           Decimal? @db.Decimal(18, 8)
   ciLevel          Decimal? @db.Decimal(5, 4)
+  /// Standard error on the analysis scale (log scale for ratio measures).
+  se               Decimal? @db.Decimal(18, 8)
   pValue           Decimal? @db.Decimal(18, 12)
   dispersionType   String?
   nAnalyzed        Int?
-  directionResolved Boolean @default(false)
-  lowerIsBetter    Boolean?
+  nExperimental    Int?
+  nComparator      Int?
+  /// Comparator-arm event risk, when arm-level counts exist. Needed for OR/RR/RD/HR conversion.
+  controlRisk      Decimal? @db.Decimal(9, 8)
+  /// Pooled SD of the outcome, when arm-level SDs exist. Needed for MD/SMD conversion.
+  pooledSd         Decimal? @db.Decimal(18, 8)
 
-  endpointNodeId   String?
-  populationHash   String?
-  interventionHash String?
-  comparatorHash   String?
-  timepointDays    Int?
+  /// EXPERIMENTAL_OVER_COMPARATOR | EXPERIMENTAL_MINUS_COMPARATOR
+  directionConvention String
+  directionResolved   Boolean @default(false)
+  lowerIsBetter       Boolean?
+
+  experimentalLabel String?
+  comparatorLabel   String?
+  /// Canonical agent slugs in the experimental arm, sorted.
+  agents            String[]
+  agentClass        String?
+  /// Normalized daily dose of the primary agent, in the agent's reference unit.
+  doseDaily         Decimal? @db.Decimal(18, 6)
+  doseUnit          String?
+  /// PLACEBO | ACTIVE | STANDARD_OF_CARE | NO_TREATMENT | DOSE_COMPARISON | UNKNOWN
+  comparatorClass   String?
+  comparatorAgents  String[]
+
+  endpointNodeId     String?
+  populationHash     String?
+  interventionHash   String?
+  comparatorHash     String?
+  timepointDays      Int?
   analysisPopulation String? // ITT | PP | MITT | UNKNOWN
 
+  /// Factor[] chain for the normalization and harmonization of this record.
+  factors     Json
   ruleVersion String
   createdAt   DateTime @default(now())
 
   @@index([nctId])
   @@index([endpointNodeId])
   @@index([snapshotId, endpointNodeId])
+  @@index([trialId])
+}
+
+/// Outcomes that could not be normalized. Kept so the yield gate is auditable.
+model NormalizationFailure {
+  id               String   @id @default(cuid())
+  snapshotId       String
+  nctId            String
+  outcomeMeasureId String
+  analysisId       String?
+  reason           String
+  detail           String?
+  createdAt        DateTime @default(now())
+
+  @@index([snapshotId, reason])
+  @@index([snapshotId, nctId])
+}
+
+/// Endpoint ontology node, materialized from @enigma/harmonize for querying.
+model EndpointNode {
+  id            String  @id
+  parentId      String?
+  label         String
+  family        String
+  depth         Int
+  lowerIsBetter Boolean?
+  meshTerms     String[]
+  ruleVersion   String
 }
 
 /// Pairwise comparability decision. Failures are records, not nulls.
 model ComparabilityEdge {
-  id        String @id @default(cuid())
-  aId       String
-  bId       String
+  id         String   @id @default(cuid())
+  snapshotId String
+  snapshot   Snapshot @relation(fields: [snapshotId], references: [id])
+  aId        String
+  bId        String
+  aNctId     String
+  bNctId     String
+  blockKey   String
 
-  gateScore     Decimal @db.Decimal(5, 4) // min across dimensions
-  passed        Boolean
-  failureReasons Json    // dimension -> reason
-  factors       Json     // Factor[] provenance chain
+  gateScore       Decimal @db.Decimal(5, 4) // min across dimensions
+  passed          Boolean
+  weakestDimension String
+  dimensionScores Json    // dimension -> score
+  failureReasons  Json    // dimension -> reason code
+  factors         Json    // Factor[] provenance chain
 
   ruleVersion String
   createdAt   DateTime @default(now())
 
   @@unique([aId, bId, ruleVersion])
-  @@index([passed, gateScore])
+  @@index([snapshotId, passed, gateScore])
+  @@index([snapshotId, weakestDimension])
+  @@index([aNctId])
+  @@index([bNctId])
 }
 
-/// Only emitted for edges that passed the gate.
+/// Connected set of mutually comparable effect records (gate-pass edges only).
+model Cluster {
+  id             String   @id @default(cuid())
+  snapshotId     String
+  snapshot       Snapshot @relation(fields: [snapshotId], references: [id])
+  key            String
+  label          String
+  endpointNodeId String
+  measure        String
+  k              Int
+  nPatients      Int
+  density        Decimal  @db.Decimal(5, 4)
+  memberIds      String[]
+  /// Pooled estimates, Q, I2, tau2, cumulative series, moderator fits.
+  stats          Json
+  createdAt      DateTime @default(now())
+
+  @@unique([snapshotId, key])
+  @@index([snapshotId, endpointNodeId])
+}
+
+/// Only emitted for edges (C1-C3) or clusters (C4-C5) that passed the gate.
 model Contradiction {
   id         String   @id @default(cuid())
   snapshotId String
   snapshot   Snapshot @relation(fields: [snapshotId], references: [id])
 
-  edgeId      String
-  type        String  // C1..C5
-  severity    Decimal @db.Decimal(5, 4)
+  edgeId    String?
+  clusterId String?
+  aId       String?
+  bId       String?
+  nctIds    String[]
+  endpointNodeId String
+
+  type            String  // C1..C5
+  severity        Decimal @db.Decimal(5, 4)
+  gateConfidence  Decimal @db.Decimal(5, 4)
   diagnosticValue Decimal @db.Decimal(5, 4)
+  /// gate_confidence, severity, cluster_weight, unexplained_residual, discriminability, already_resolved
+  components      Json
+  rank            Int?
 
   discriminatingVariable String?
   alreadyResolvedRef     String?
+  /// Claim: "A and B cannot both hold under conditions C. The discriminating variable is D."
+  claim                  Json
   factors                Json    // full Factor[] chain
 
   createdAt DateTime @default(now())
 
+  dossier Dossier?
+
   @@index([diagnosticValue])
   @@index([snapshotId, type])
+  @@index([snapshotId, endpointNodeId])
+  @@index([snapshotId, rank])
+}
+
+/// Ranked, provenance-complete, human-readable output for one contradiction.
+model Dossier {
+  id              String        @id @default(cuid())
+  contradictionId String        @unique
+  contradiction   Contradiction @relation(fields: [contradictionId], references: [id], onDelete: Cascade)
+  snapshotId      String
+  snapshot        Snapshot      @relation(fields: [snapshotId], references: [id])
+  rank            Int
+  title           String
+  body            Json
+  markdown        String
+  createdAt       DateTime      @default(now())
+
+  @@index([snapshotId, rank])
+}
+
+/// Published review that already explains a class of conflict.
+model ResolvedReview {
+  id              String   @id
+  citation        String
+  pmid            String?
+  year            Int
+  endpointNodeIds String[]
+  agentClasses    String[]
+  nctIds          String[]
+  conclusion      String
+  /// PENDING_HUMAN_REVIEW | REVIEWED
+  reviewStatus    String
+}
+
+// ------------------------------------------------------------------ user state
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  name      String
+  /// ENDPOINT | AGENT | TRIAL
+  kind      String
+  value     String
+  createdAt DateTime @default(now())
+
+  alerts Alert[]
+
+  @@unique([kind, value])
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  snapshotId  String
+  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id])
+  /// TRIAL_ADDED | TRIAL_CHANGED | NEW_CONTRADICTION
+  kind        String
+  title       String
+  detail      Json
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([watchlistId, readAt])
+}
+
+/// One row per pipeline step execution. Holds the phase-gate metrics.
+model PipelineRun {
+  id          String    @id @default(cuid())
+  snapshotId  String
+  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id])
+  step        String
+  ruleVersion String?
+  stats       Json
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([snapshotId, step])
 }

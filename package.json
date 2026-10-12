@@ -2,7 +2,9 @@
   "name": "enigma",
   "private": true,
   "packageManager": "pnpm@9.12.0",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -13,15 +15,23 @@
     "db:migrate": "pnpm --filter @enigma/db migrate",
     "db:studio": "pnpm --filter @enigma/db studio",
     "aact:restore": "bash infra/aact/restore.sh",
-    "engine:dev": "cd apps/engine && uv run uvicorn main:app --reload --port 8100"
+    "engine:dev": "cd apps/engine && uv run --env-file ../../.env uvicorn main:app --reload --port ${ENGINE_PORT:-8100}",
+    "db:deploy": "pnpm --filter @enigma/db run migrate:deploy",
+    "db:reset": "pnpm --filter @enigma/db run reset",
+    "stack:up": "docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait",
+    "stack:down": "docker compose --env-file .env -f infra/docker/docker-compose.yml down",
+    "aact:subset": "pnpm ingest aact-subset",
+    "ingest": "pnpm --filter @enigma/ingest run cli",
+    "cold-start": "bash scripts/cold-start.sh"
   },
   "devDependencies": {
+    "@types/node": "^22.7.0",
+    "dotenv-cli": "^7.4.0",
+    "eslint": "^9.11.0",
+    "prettier": "^3.3.0",
+    "tsx": "^4.19.0",
     "turbo": "^2.1.0",
     "typescript": "^5.6.0",
-    "@types/node": "^22.7.0",
-    "tsx": "^4.19.0",
-    "vitest": "^2.1.0",
-    "eslint": "^9.11.0",
-    "prettier": "^3.3.0"
+    "vitest": "^2.1.0"
   }
 }

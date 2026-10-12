@@ -10,12 +10,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "fastify": "^4.28.0",
+    "@enigma/core": "workspace:*",
+    "@enigma/db": "workspace:*",
+    "@enigma/shared": "workspace:*",
     "@fastify/cors": "^9.0.0",
     "@fastify/sensible": "^5.6.0",
+    "fastify": "^4.28.0",
     "zod": "^3.23.0",
-    "@enigma/db": "workspace:*",
-    "@enigma/core": "workspace:*",
-    "@enigma/shared": "workspace:*"
+    "@enigma/provenance": "workspace:*",
+    "@enigma/harmonize": "workspace:*",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.13.5"
   }
 }
