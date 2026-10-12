@@ -5,3 +5,7 @@ export * from './measures.js';
 export * from './arms.js';
 export * from './direction.js';
 export * from './stopReason.js';
+export * from './endpoints.js';
+export * from './units.js';
+export * from './analysisPopulation.js';
+export * from './population.js';

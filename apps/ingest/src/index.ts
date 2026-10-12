@@ -4,6 +4,8 @@ import { getDb } from '@enigma/db';
 import { createLogger, loadConfig } from '@enigma/shared';
 import { buildSubset } from './aact/subset.js';
 import { resolveSnapshotId } from './context.js';
+import { runAuditSample } from './steps/auditSample.js';
+import { runHarmonize } from './steps/harmonize.js';
 import { runNormalize } from './steps/normalize.js';
 import { runSnapshot } from './steps/snapshot.js';
 
@@ -24,6 +26,12 @@ const commands: Record<string, () => Promise<void>> = {
   },
   normalize: async () => {
     await runNormalize(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  harmonize: async () => {
+    await runHarmonize(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  'audit-sample': async () => {
+    await runAuditSample(await resolveSnapshotId(flag('snapshot')));
   },
 };
 
