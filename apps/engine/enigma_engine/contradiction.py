@@ -6,7 +6,7 @@ enforces that; these functions refuse a pair whose gate score is below threshold
   C1  direction conflict          opposite directions, both intervals exclude the null
   C2  magnitude incompatibility   same direction, disjoint intervals, |z of difference| > 1.96
   C3  null / effect conflict      one interval excludes the null, the other includes the null
-                                  and excludes the first point estimate
+                                  and excludes the first point estimate, |z of difference| > 1.96
   C4  heterogeneity anomaly       cluster I2 above threshold, no moderator accounts for it
   C5  temporal reversal           cumulative pooled estimate changes side of the null after
                                   its interval had excluded the null
@@ -180,14 +180,17 @@ def classify_pair(p: PairInput, t: Tuning) -> PairResult:
     elif excl_a != excl_b:
         sig_theta, null_lo, null_hi, null_se, sig_z = (ta, lb, hb, sb, za) if excl_a else (tb, la, ha, sa, zb)
         null_theta = tb if excl_a else ta
-        if sig_theta < null_lo or sig_theta > null_hi:
+        # The roadmap definition ignores the uncertainty of the significant estimate. Requiring
+        # |z of difference| > 1.96 keeps pairs that are statistically compatible out of C3.
+        if (sig_theta < null_lo or sig_theta > null_hi) and abs(z_diff) > Z95:
             kind = "C3"
             beyond = abs(sig_theta - null_theta) / null_se - Z95
             limiting = min(beyond, abs(sig_z) - Z95)
             severity = 0.3 + 0.6 * _saturate(limiting, 1.5)
             rule = "classify.c3_null_effect_conflict"
             inputs = {"effectSide": "A" if excl_a else "B", "effectZ": sig_z, "seBeyondNullInterval": beyond}
-            note = ("One interval excludes the null. The other includes the null and excludes the first point estimate. "
+            note = ("One interval excludes the null. The other includes the null and excludes the first point estimate, "
+                    "and |z of difference| > 1.96. "
                     "Severity = 0.3 + 0.6 * (1 - exp(-min(distance beyond interval, effect |z| - 1.96) / 1.5)).")
     elif excl_a and excl_b and disjoint and abs(z_diff) > Z95:
         kind = "C2"
@@ -228,6 +231,19 @@ def classify_pair(p: PairInput, t: Tuning) -> PairResult:
         unexplained_residual=round(residual, 4), discriminability=1.0 if disc.basis == "MEASURED" else 0.0,
         discriminator=disc, factors=chain.factors,
     )
+
+
+def benjamini_hochberg(p_values: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (q-values), in the order given."""
+    m = len(p_values)
+    order = sorted(range(m), key=lambda i: p_values[i])
+    q = [1.0] * m
+    running = 1.0
+    for rank_from_end, i in enumerate(reversed(order)):
+        rank = m - rank_from_end
+        running = min(running, p_values[i] * m / rank)
+        q[i] = running
+    return q
 
 
 # -------------------------------------------------------------------- clusters

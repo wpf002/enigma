@@ -4,8 +4,9 @@
 import { timeFrameDays, type EffectMeasure } from '@enigma/core';
 import { getDb } from '@enigma/db';
 import {
-  classifyAnalysisPopulation, classifyEndpoint, encodePopulation, ENDPOINT_BY_ID, endpointDepth, ENDPOINTS, populationKey,
-  POPULATION_RULES, profileArm, resolveUnit, RULE_SET_VERSION, UNIT_RULE, UNIT_UNKNOWN_RULE, type DesignGroup,
+  classifyAnalysisPopulation, classifyEndpoint, encodePopulation, interventionKey, ENDPOINT_BY_ID, endpointDepth, ENDPOINTS, populationKey,
+  POPULATION_RULES, profileArm, resolveUnit, RULE_SET_VERSION, SIGN_WORDING_RULE, UNIT_MISMATCH_RULE, UNIT_RULE, UNIT_UNKNOWN_RULE,
+  type DesignGroup,
 } from '@enigma/harmonize';
 import { FactorChain, type Factor } from '@enigma/provenance';
 import { chunk, createLogger, hashOf, type EnigmaConfig } from '@enigma/shared';
@@ -53,6 +54,7 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
     endpointUnassigned: {} as Record<string, number>,
     unitsRecognized: 0,
     unitsUnrecognized: 0,
+    signWordingAmbiguous: 0,
     timepointKnown: 0,
     analysisPopulation: {} as Record<string, number>,
     background: {} as Record<string, number>,
@@ -112,8 +114,25 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
       stats.records += 1;
       const measure = rec.measure as EffectMeasure;
       const decision = classifyEndpoint({ title: rec.outcomeTitle, classification: rec.classification, measure, units: rec.units });
-      const node = decision.nodeId ? ENDPOINT_BY_ID.get(decision.nodeId) : undefined;
+      let node = decision.nodeId ? ENDPOINT_BY_ID.get(decision.nodeId) : undefined;
       const chain = FactorChain.from((rec.factors as unknown as Factor[]).filter((f) => f.stage !== 'HARMONIZE'));
+      // An analyte node only takes records posted in a unit of that analyte.
+      const unitMismatch = measure === 'MD' && node?.analyte !== undefined && !resolveUnit(node.analyte, rec.units).recognized;
+      if (unitMismatch) {
+        chain.add({
+          stage: 'HARMONIZE',
+          name: 'harmonize.endpoint_unit',
+          rule: UNIT_MISMATCH_RULE,
+          ruleVersion: RULE_SET_VERSION,
+          inputs: { candidateNode: node!.id, analyte: node!.analyte!, postedUnit: rec.units },
+          output: null,
+          outcome: 'FAIL',
+          note: 'Unit is not a unit of the analyte. Not assigned.',
+        });
+        node = undefined;
+        decision.nodeId = null;
+        decision.reason = 'UNIT_NOT_OF_ANALYTE';
+      }
 
       chain.add({
         stage: 'HARMONIZE',
@@ -160,6 +179,24 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
         units = unit.unit;
       }
 
+      // "Percent weight loss", "reduction in HbA1c": a positive value may mean a fall. Sign left unresolved.
+      let directionResolved = rec.directionResolved;
+      const wording = `${rec.outcomeTitle} ${rec.classification ?? ''}`.toLowerCase();
+      if (measure === 'MD' && node && /\b(reduction|decrease|decline|loss|lowering|drop)\b/.test(wording) && !/\bchange\b/.test(wording)) {
+        directionResolved = false;
+        stats.signWordingAmbiguous += 1;
+        chain.add({
+          stage: 'HARMONIZE',
+          name: 'harmonize.sign_wording',
+          rule: SIGN_WORDING_RULE,
+          ruleVersion: RULE_SET_VERSION,
+          inputs: { title: rec.outcomeTitle },
+          output: false,
+          outcome: 'FAIL',
+          note: 'Outcome titled as a reduction or loss. Direction marked unresolved.',
+        });
+      }
+
       const timepointDays = decision.classificationDays ?? timeFrameDays(rec.timeFrame);
       if (timepointDays !== null) stats.timepointKnown += 1;
       chain.add({
@@ -185,7 +222,7 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
       });
 
       const populationHash = populationHashes.get(rec.nctId) ?? null;
-      const interventionHash = rec.agents.length ? rec.agents.join('+') : null;
+      const interventionHash = interventionKey(rec.agents);
       const comparatorHash = rec.comparatorClass ? `${rec.comparatorClass}:${rec.comparatorAgents.join('+')}` : null;
       chain.add({
         stage: 'HARMONIZE',
@@ -202,6 +239,7 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
         endpointNodeId: decision.nodeId,
         lowerIsBetter: node?.lowerIsBetter ?? null,
         value, ciLow, ciHigh, se, pooledSd, units,
+        directionResolved,
         timepointDays,
         analysisPopulation: analysis.population,
         populationHash, interventionHash, comparatorHash,
@@ -213,13 +251,14 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
       await db.$executeRaw`
         UPDATE "EffectRecord" e
            SET "endpointNodeId" = x."endpointNodeId", "lowerIsBetter" = x."lowerIsBetter",
-               value = x.value, "ciLow" = x."ciLow", "ciHigh" = x."ciHigh", se = x.se, "pooledSd" = x."pooledSd", units = x.units,
+ value = x.value, "ciLow" = x."ciLow", "ciHigh" = x."ciHigh", se = x.se, "pooledSd" = x."pooledSd", units = x.units,
+               "directionResolved" = x."directionResolved",
                "timepointDays" = x."timepointDays", "analysisPopulation" = x."analysisPopulation",
                "populationHash" = x."populationHash", "interventionHash" = x."interventionHash", "comparatorHash" = x."comparatorHash",
                factors = x.factors
           FROM jsonb_to_recordset(${JSON.stringify(part)}::jsonb)
                AS x(id text, "endpointNodeId" text, "lowerIsBetter" boolean, value numeric, "ciLow" numeric, "ciHigh" numeric,
-                    se numeric, "pooledSd" numeric, units text, "timepointDays" int, "analysisPopulation" text,
+                    se numeric, "pooledSd" numeric, units text, "directionResolved" boolean, "timepointDays" int, "analysisPopulation" text,
                     "populationHash" text, "interventionHash" text, "comparatorHash" text, factors jsonb)
          WHERE e.id = x.id`;
     }

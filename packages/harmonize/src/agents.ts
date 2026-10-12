@@ -114,7 +114,8 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Aliases sorted longest first so "oral semaglutide" wins over "semaglutide". */
 const ALIAS_INDEX: { agent: Agent; alias: string; pattern: RegExp }[] = AGENTS.flatMap((agent) =>
-  agent.aliases.map((alias) => ({ agent, alias, pattern: new RegExp(`(?<![a-z0-9])${escape(alias)}(?![a-z0-9])`, 'g') })),
+  // Not preceded or followed by a letter. A digit may follow or precede: "Lina5Pio15", "Sita100".
+  agent.aliases.map((alias) => ({ agent, alias, pattern: new RegExp(`(?<![a-z])${escape(alias)}(?![a-z])`, 'g') })),
 ).sort((x, y) => y.alias.length - x.alias.length);
 
 export interface AgentHit {
@@ -144,8 +145,63 @@ export function findAgents(text: string | null | undefined, strict = false): Age
       if (!hits.has(agent.id)) hits.set(agent.id, { agent, alias, index: start });
     }
   }
-  const out = [...hits.values()];
+  let out = [...hits.values()];
+  // Aliases under five characters ("met", "pio", "sita") are abbreviations. They only count next to
+  // another signal that the text is a drug list: a full drug name, a placebo, or a dose glued on.
+  const anchored = out.some((h) => h.alias.length >= 5) || out.length >= 2 || /placebo|pbo/.test(s);
+  out = out.filter((h) => h.alias.length >= 5 || anchored || /^\s?\d/.test(s.slice(h.index + h.alias.length)));
   // "insulin glargine" is one agent. Drop the unspecified-insulin hit when a specific insulin is present.
   const specific = out.some((h) => h.agent.class.startsWith('INSULIN_'));
   return out.filter((h) => !(specific && h.agent.id === 'insulin')).sort((a, b) => a.index - b.index);
+}
+
+/** Words that appear in arm titles without naming an intervention. */
+const NEUTRAL = new Set(`a an and or the of to in on at by for with without plus then per vs versus from as is than
+  placebo pbo sham vehicle dummy control controls comparator reference active experimental test treatment treatments
+  treated group groups arm arms cohort cohorts part period sequence stage phase study main core extension overall total
+  all pooled combined dose doses dosing low lower high higher medium mid middle fixed flexible titrated titration
+  escalation maintenance initial starting target once twice thrice three times daily weekly monthly day days week weeks
+  month months year years hour hours qd bid tid qid qw od ow biw prn am pm morning evening bedtime night meal meals
+  mealtime premeal fasting fasted fed before after breakfast lunch dinner mg mcg ug kg ml iu unit units tablet tablets
+  capsule capsules pill oral orally injection injections injected subcutaneous subcutaneously sc iv intravenous infusion
+  inhaled er xr ir sr xl release extended immediate modified formulation solution pen vial device pump syringe prefilled
+  therapy monotherapy combination add addon background stable existing current standard care usual conventional
+  intensive routine diet exercise lifestyle drug drugs medication medications agent agents antidiabetic oad oads oha
+  naive naïve participants participant patients patient subjects subject adults healthy volunteers japanese chinese
+  korean asian t2d t2dm type diabetes mellitus only alone open label double blind randomized randomised matching matched
+  first second third one two i ii iii iv step level arm1 arm2 not no non any other both either each who were was are
+  receiving received switch switched continued continuation initiation insulin basal bolus prandial regimen algorithm
+  based intervention interventions program programme`.split(/\s+/));
+
+/** Pseudo-agent that is a sponsor code ("?bi456906"). Codes identify one compound, so trials can be matched on them. */
+export const isCodeAgent = (id: string): boolean => /^\?[a-z]{2,6}\d{2,}[a-z]?$/.test(id);
+
+/**
+ * Key two records must share to be compared on intervention. Null when the arm contains something
+ * that is neither a known agent nor a sponsor code: a leftover word is not an identity.
+ */
+export function interventionKey(agents: readonly string[]): string | null {
+  if (agents.length === 0) return null;
+  if (agents.some((id) => id.startsWith('?') && !isCodeAgent(id))) return null;
+  return [...agents].sort().join('+');
+}
+
+/**
+ * Tokens in an arm title that are not a known agent, a dose, or a neutral word. A leftover token means the
+ * arm contains something the dictionary does not cover: an investigational code, a drug of another class,
+ * a device, a behavioral program. Such arms get a pseudo-agent, so they are never matched to a known agent's block.
+ */
+export function unknownTokens(title: string, hits: readonly AgentHit[]): string[] {
+  let s = ` ${title.toLowerCase()} `;
+  for (const hit of [...hits].sort((a, b) => b.index - a.index)) {
+    s = `${s.slice(0, hit.index + 1)} ${s.slice(hit.index + 1 + hit.alias.length)}`;
+  }
+  // sponsor codes: "bi 456906", "pf-04991532", "medi0382", "ent-03s"
+  const codes = [...s.matchAll(/(?<![a-z0-9])([a-z]{2,6})[- ]?(\d{3,}[a-z]?|\d{2}[a-z])(?![a-z0-9])/g)].map((m) => `${m[1]}${m[2]}`);
+  s = s.replace(/(?<![a-z0-9])([a-z]{2,6})[- ]?(\d{3,}[a-z]?|\d{2}[a-z])(?![a-z0-9])/g, ' ');
+  const words = s
+    .replace(/\d+(\.\d+)?\s*(mg|mcg|µg|μg|ug|g|kg|ml|iu|u|units?|%)?(\s*\/\s*(day|d|kg|week|ml|dl))?/g, ' ')
+    .split(/[^a-zà-ÿ]+/)
+    .filter((w) => w.length >= 4 && !NEUTRAL.has(w));
+  return [...new Set([...codes, ...words])];
 }

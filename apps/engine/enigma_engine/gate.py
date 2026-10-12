@@ -74,6 +74,8 @@ class GateRecord(Model):
     dose_unit: str | None = None
     comparator_class: str | None = None
     comparator_agents: list[str] = []
+    background_agents: list[str] = []
+    comparator_dose_daily: float | None = None
     timepoint_days: int | None = None
     analysis_population: str | None = None
 
@@ -134,9 +136,8 @@ def common_measure(a: GateRecord, b: GateRecord) -> tuple[str | None, float, str
     if a.measure == b.measure:
         if a.measure != "MD" or a.units == b.units:
             return a.measure, 1.0, None, "measure.same", "Same effect measure and unit."
-        if convertible("MD", "SMD", ea) and convertible("MD", "SMD", eb):
-            return "SMD", 0.8, None, "measure.md_to_smd", "Mean differences in different units. Both standardized by pooled SD."
-        return None, 0.0, "MEASURE_NOT_CONVERTIBLE", "measure.unit_mismatch", "Mean differences in different units and no pooled SD."
+        # Different units after harmonization mean different instruments. Standardizing would hide that.
+        return None, 0.0, "MEASURE_NOT_CONVERTIBLE", "measure.unit_mismatch", "Mean differences in different units."
     pair = {a.measure, b.measure}
     continuous = {"MD", "SMD"}
     if pair <= continuous:
@@ -231,6 +232,10 @@ def _intervention(a: GateRecord, b: GateRecord, t: Tuning) -> Result:
         if a.agent_class and a.agent_class == b.agent_class:
             return 0.4, "INTERVENTION_DIFFERENT_AGENT", "intervention.same_class", inputs, "Different agents of one class."
         return 0.0, "INTERVENTION_DIFFERENT_CLASS", "intervention.different_class", inputs, "Different drug classes."
+    bg_a, bg_b = sorted(a.background_agents), sorted(b.background_agents)
+    if bg_a and bg_b and bg_a != bg_b:
+        inputs["backgroundA"], inputs["backgroundB"] = bg_a, bg_b
+        return 0.5, "INTERVENTION_BACKGROUND_DIFFERS", "intervention.background_differs", inputs, "Same agent on different background drugs."
     if a.dose_daily is None or b.dose_daily is None or a.dose_unit != b.dose_unit:
         return 0.75, None, "intervention.dose_not_encoded", inputs, "Same agent. Dose not encoded for one or both."
     ratio = min(a.dose_daily, b.dose_daily) / max(a.dose_daily, b.dose_daily)
@@ -244,7 +249,7 @@ def _intervention(a: GateRecord, b: GateRecord, t: Tuning) -> Result:
 CONTROL_LIKE = {"PLACEBO", "NO_TREATMENT", "STANDARD_OF_CARE"}
 
 
-def _comparator(a: GateRecord, b: GateRecord, _: Tuning) -> Result:
+def _comparator(a: GateRecord, b: GateRecord, t: Tuning) -> Result:
     ca, cb = a.comparator_class, b.comparator_class
     inputs = {"a": ca, "b": cb, "agentsA": a.comparator_agents, "agentsB": b.comparator_agents}
     if not ca or not cb:
@@ -253,7 +258,13 @@ def _comparator(a: GateRecord, b: GateRecord, _: Tuning) -> Result:
         if ca == "ACTIVE" and sorted(a.comparator_agents) != sorted(b.comparator_agents):
             return 0.4, "COMPARATOR_DIFFERENT_ACTIVE", "comparator.different_active", inputs, "Active controls are different agents."
         if ca == "DOSE_COMPARISON":
-            return 0.75, None, "comparator.dose_comparison", inputs, "Both compare doses of one agent. Reference doses not compared."
+            ra, rb = a.comparator_dose_daily, b.comparator_dose_daily
+            inputs["referenceDoseA"], inputs["referenceDoseB"] = ra, rb
+            if ra and rb and 1 - min(ra, rb) / max(ra, rb) <= t.dose_equivalence_band + 1e-9:
+                return 1.0, None, "comparator.same_reference_dose", inputs, "Both compare against the same reference dose."
+            return 0.3, "COMPARATOR_REFERENCE_DOSE_DIFFERS", "comparator.reference_dose_differs", inputs, "Reference doses differ or are not encoded."
+        if ca == "STANDARD_OF_CARE":
+            return 0.6, "COMPARATOR_UNSPECIFIED_CONTROL", "comparator.standard_of_care", inputs, "Both against a control whose content is not recorded."
         return 1.0, None, "comparator.same_class", inputs, "Same comparator class."
     if ca in CONTROL_LIKE and cb in CONTROL_LIKE:
         return 0.6, "COMPARATOR_CLASS_MISMATCH", "comparator.control_variants", inputs, "Placebo against untreated or standard-care control."

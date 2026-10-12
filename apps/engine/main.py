@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
 from enigma_engine import ENGINE_RULE_VERSION
-from enigma_engine.contradiction import ClusterInput, ClusterResult, PairInput, PairResult, analyze_cluster, classify_pair
+from enigma_engine.contradiction import (
+    ClusterInput, ClusterResult, PairInput, PairResult, analyze_cluster, benjamini_hochberg, classify_pair,
+)
 from enigma_engine.effects import Candidate, Normalized, normalize
 from enigma_engine.gate import Edge, GateRecord, Population, Tuning, score_pair
 from enigma_engine.models import Model
@@ -95,3 +97,18 @@ class RankResponse(Model):
 @app.post("/v1/rank", response_model=RankResponse)
 def rank_contradictions(req: RankRequest) -> RankResponse:
     return RankResponse(rule_version=ENGINE_RULE_VERSION, results=rank(req.items))
+
+
+class FdrRequest(Model):
+    p_values: list[float]
+
+
+class FdrResponse(Model):
+    rule_version: str
+    q_values: list[float]
+
+
+@app.post("/v1/contradictions/fdr", response_model=FdrResponse)
+def contradiction_fdr(req: FdrRequest) -> FdrResponse:
+    """Benjamini-Hochberg q-values over every pair tested in a snapshot."""
+    return FdrResponse(rule_version=ENGINE_RULE_VERSION, q_values=benjamini_hochberg(req.p_values))

@@ -71,11 +71,14 @@ def test_odds_ratio_and_risk_ratio_convert_through_control_risk():
     assert gate(rec(measure="OR", control_risk=None), b).failure_reasons["measure"] == "MEASURE_NOT_CONVERTIBLE"
 
 
-def test_mean_differences_need_the_same_unit_or_a_pooled_sd():
+def test_mean_differences_need_the_same_unit():
     md = dict(measure="MD", value=-0.5, ci_low=-0.7, ci_high=-0.3, se=0.1, endpoint_node_id="hba1c-change", endpoint_path=["glycemic", "hba1c-change"])
     assert gate(rec(**md, units="%"), rec(id="b", **md, units="%")).dimension_scores["measure"] == 1.0
     assert gate(rec(**md, units="%"), rec(id="b", **md, units="score")).failure_reasons["measure"] == "MEASURE_NOT_CONVERTIBLE"
-    assert gate(rec(**md, units="%", pooled_sd=1.0), rec(id="b", **md, units="score", pooled_sd=4.0)).common_measure == "SMD"
+    # A pooled SD does not rescue it: different units are different instruments.
+    assert not gate(rec(**md, units="%", pooled_sd=1.0), rec(id="b", **md, units="score", pooled_sd=4.0)).passed
+    smd = dict(md, measure="SMD")
+    assert gate(rec(**md, units="%", pooled_sd=1.0), rec(id="b", **smd, units=None)).common_measure == "SMD"
 
 
 def test_dose_band():
@@ -129,3 +132,21 @@ def test_apparent_conflict_is_reported_even_when_the_gate_fails():
     edge = gate(a, b)
     assert not edge.passed and edge.apparent_conflict
     assert not apparent_conflict(a, rec(id="c", value=0.9, ci_low=0.78, ci_high=1.04, se=0.073))
+
+
+def test_same_agent_on_different_background_drugs_fails():
+    edge = gate(rec(background_agents=["metformin"]), rec(id="b", background_agents=["pioglitazone"]))
+    assert edge.failure_reasons["intervention"] == "INTERVENTION_BACKGROUND_DIFFERS"
+    assert gate(rec(background_agents=["metformin"]), rec(id="b")).dimension_scores["intervention"] == 1.0
+
+
+def test_dose_comparisons_need_the_same_reference_dose():
+    a = rec(comparator_class="DOSE_COMPARISON", dose_daily=25, comparator_dose_daily=10)
+    assert gate(a, rec(id="b", comparator_class="DOSE_COMPARISON", dose_daily=25, comparator_dose_daily=10)).dimension_scores["comparator"] == 1.0
+    other = gate(a, rec(id="b", comparator_class="DOSE_COMPARISON", dose_daily=25, comparator_dose_daily=5))
+    assert other.failure_reasons["comparator"] == "COMPARATOR_REFERENCE_DOSE_DIFFERS"
+
+
+def test_two_unspecified_standard_care_controls_are_not_assumed_equal():
+    edge = gate(rec(comparator_class="STANDARD_OF_CARE"), rec(id="b", comparator_class="STANDARD_OF_CARE"))
+    assert edge.failure_reasons["comparator"] == "COMPARATOR_UNSPECIFIED_CONTROL"

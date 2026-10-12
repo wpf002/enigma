@@ -69,12 +69,20 @@ def test_hazard_ratio_with_interval_and_matching_arms():
     assert out.effect.control_risk == pytest.approx(0.121)
 
 
-def test_comparator_first_ratio_is_inverted():
-    # Reported as placebo / drug. Arm data say the drug arm had fewer events.
-    out = normalize(_analysis(value=1 / 0.86, ci_low=1 / 0.99, ci_high=1 / 0.74))
+def test_comparator_first_ratio_is_inverted_when_the_order_is_stated():
+    # Stated as placebo / drug, and the arm data agree: the drug arm had fewer events.
+    out = normalize(_analysis(value=1 / 0.86, ci_low=1 / 0.99, ci_high=1 / 0.74, direction_hint="COMPARATOR_FIRST"))
     assert out.ok and out.effect is not None
     assert out.effect.value == pytest.approx(0.86, rel=1e-9)
     assert out.effect.direction_resolved
+
+
+def test_sign_that_contradicts_arm_data_with_no_stated_order_is_unresolved():
+    # Could be a comparator-first analysis or an arm value posted with the wrong sign. Not flipped.
+    out = normalize(_analysis(value=1 / 0.86, ci_low=1 / 0.99, ci_high=1 / 0.74))
+    assert out.ok and out.effect is not None
+    assert out.effect.value == pytest.approx(1 / 0.86, rel=1e-9)
+    assert not out.effect.direction_resolved
 
 
 def test_stated_order_that_contradicts_arm_data_is_unresolved():

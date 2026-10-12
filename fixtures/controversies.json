@@ -1,0 +1,77 @@
+{
+  "_note": "Documented controversies used by `pnpm ingest controversy-eval` (Phase 4 exit gate: surface >= 12 of 20 without seeding). Nine are listed; the gate calls for twenty, chosen by a domain expert. Entries were written from memory of the literature and are PENDING_HUMAN_REVIEW. NCT IDs were checked against the registry on 2026-10-11.",
+  "controversies": [
+    {
+      "id": "rosiglitazone-mi",
+      "title": "Rosiglitazone and myocardial infarction risk",
+      "summary": "A 2007 pooled analysis reported more myocardial infarctions with rosiglitazone. The RECORD trial did not confirm an increase in its primary outcome.",
+      "agents": ["rosiglitazone"], "agentClasses": [], "nctIds": ["NCT00379769"],
+      "endpointNodeIds": ["mi", "mi-nonfatal", "mace", "mace-3p", "death-cv"],
+      "source": "Nissen SE, Wolski K. N Engl J Med 2007;356:2457-71. Home PD, et al. Lancet 2009;373:2125-35."
+    },
+    {
+      "id": "dpp4i-heart-failure",
+      "title": "DPP-4 inhibitors and hospitalization for heart failure",
+      "summary": "SAVOR-TIMI 53 reported more heart failure hospitalizations with saxagliptin. TECOS did not see this with sitagliptin.",
+      "agents": [], "agentClasses": ["DPP4I"], "nctIds": ["NCT01107886", "NCT00968708", "NCT00790205"],
+      "endpointNodeIds": ["hhf", "hhf-cv-death"],
+      "source": "Scirica BM, et al. N Engl J Med 2013;369:1317-26. Green JB, et al. N Engl J Med 2015;373:232-42."
+    },
+    {
+      "id": "glp1ra-mace-heterogeneity",
+      "title": "GLP-1 receptor agonists: neutral and positive MACE trials",
+      "summary": "ELIXA (lixisenatide) and EXSCEL (exenatide once weekly) were neutral on MACE. LEADER (liraglutide) and SUSTAIN-6 (semaglutide) showed reductions.",
+      "agents": [], "agentClasses": ["GLP1RA"], "nctIds": ["NCT01147250", "NCT01144338", "NCT01179048", "NCT01720446"],
+      "endpointNodeIds": ["mace", "mace-3p", "mace-4p"],
+      "source": "Pfeffer MA, et al. N Engl J Med 2015;373:2247-57. Marso SP, et al. N Engl J Med 2016;375:311-22."
+    },
+    {
+      "id": "sglt2i-mace-by-ascvd",
+      "title": "SGLT2 inhibitors: MACE benefit with and without established cardiovascular disease",
+      "summary": "EMPA-REG OUTCOME enrolled only patients with established cardiovascular disease and reduced MACE. DECLARE-TIMI 58 enrolled mostly primary-prevention patients and did not.",
+      "agents": [], "agentClasses": ["SGLT2I"], "nctIds": ["NCT01131676", "NCT01032629", "NCT01730534"],
+      "endpointNodeIds": ["mace", "mace-3p"],
+      "source": "Zelniker TA, et al. Lancet 2019;393:31-39."
+    },
+    {
+      "id": "sglt2i-stroke",
+      "title": "SGLT2 inhibitors and stroke",
+      "summary": "EMPA-REG OUTCOME had numerically more strokes with empagliflozin while its composite outcome favored the drug.",
+      "agents": [], "agentClasses": ["SGLT2I"], "nctIds": ["NCT01131676"],
+      "endpointNodeIds": ["stroke", "stroke-nonfatal"],
+      "source": "Zinman B, et al. N Engl J Med 2015;373:2117-28."
+    },
+    {
+      "id": "intensive-glycemic-control-mortality",
+      "title": "Intensive glycemic control and mortality",
+      "summary": "ACCORD stopped its intensive-glycemia arm early for higher mortality. Other intensive-control trials did not show higher mortality.",
+      "agents": [], "agentClasses": [], "nctIds": ["NCT00000620"],
+      "endpointNodeIds": ["death-all-cause", "death-cv"],
+      "source": "ACCORD Study Group. N Engl J Med 2008;358:2545-59."
+    },
+    {
+      "id": "sulfonylurea-cv-safety",
+      "title": "Sulfonylurea cardiovascular safety",
+      "summary": "Long-standing concern about sulfonylurea cardiovascular risk. CAROLINA compared glimepiride with linagliptin on cardiovascular outcomes.",
+      "agents": ["glimepiride", "linagliptin"], "agentClasses": ["SU"], "nctIds": ["NCT01243424"],
+      "endpointNodeIds": ["mace", "mace-3p", "mace-4p", "death-cv"],
+      "source": "Rosenstock J, et al. JAMA 2019;322:1155-66."
+    },
+    {
+      "id": "canagliflozin-amputation",
+      "title": "Canagliflozin and lower-limb amputation",
+      "summary": "The CANVAS Program reported more amputations with canagliflozin. CREDENCE did not.",
+      "agents": ["canagliflozin"], "agentClasses": [], "nctIds": ["NCT01032629", "NCT01989754", "NCT02065791"],
+      "endpointNodeIds": [],
+      "source": "Neal B, et al. N Engl J Med 2017;377:644-57. Perkovic V, et al. N Engl J Med 2019;380:2295-306."
+    },
+    {
+      "id": "semaglutide-retinopathy",
+      "title": "Semaglutide and diabetic retinopathy complications",
+      "summary": "SUSTAIN-6 reported more retinopathy complications with semaglutide.",
+      "agents": ["semaglutide-sc"], "agentClasses": [], "nctIds": ["NCT01720446"],
+      "endpointNodeIds": [],
+      "source": "Marso SP, et al. N Engl J Med 2016;375:1834-44."
+    }
+  ]
+}

@@ -243,7 +243,9 @@ def _orientation(c: Candidate, measure: str, theta: float, se: float, derived: f
         ("COMPARATOR_FIRST", "INDETERMINATE"): (True, True, "Stated order is comparator first. Inverted."),
         ("COMPARATOR_FIRST", "SAME"): (False, False, "Stated order contradicts the arm data."),
         (None, "SAME"): (True, False, "Arm data match the reported sign: experimental arm first."),
-        (None, "INVERTED"): (True, True, "Arm data match the opposite sign: comparator first. Inverted."),
+        # Either the analysis is comparator-first or an arm value was posted with the wrong sign.
+        # Nothing on the record says which, so the orientation is left unresolved.
+        (None, "INVERTED"): (False, False, "Reported sign contradicts the arm data and the analysis states no order."),
         (None, "INDETERMINATE"): (False, False, "No stated order and the arm data cannot separate the two orders."),
     }
     resolved, flip, note = table[(hint, check)]

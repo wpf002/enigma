@@ -199,6 +199,10 @@ model EffectRecord {
   /// PLACEBO | ACTIVE | STANDARD_OF_CARE | NO_TREATMENT | DOSE_COMPARISON | UNKNOWN
   comparatorClass   String?
   comparatorAgents  String[]
+  /// Agents both arms receive, as named in the arm titles.
+  backgroundAgents  String[]
+  /// Daily dose of the same agent in the comparator arm. Set for dose comparisons.
+  comparatorDoseDaily Decimal? @db.Decimal(18, 6)
 
   endpointNodeId     String?
   populationHash     String?
@@ -255,6 +259,8 @@ model ComparabilityEdge {
   aNctId     String
   bNctId     String
   blockKey   String
+  /// Cluster the edge belongs to. Set by the contradict step for gate-pass edges.
+  clusterId  String?
 
   gateScore       Decimal @db.Decimal(5, 4) // min across dimensions
   passed          Boolean
@@ -275,6 +281,7 @@ model ComparabilityEdge {
   @@index([snapshotId, passed, gateScore])
   @@index([snapshotId, weakestDimension])
   @@index([snapshotId, apparentConflict, passed])
+  @@index([clusterId])
   @@index([aNctId])
   @@index([bNctId])
 }
@@ -288,10 +295,16 @@ model Cluster {
   label          String
   endpointNodeId String
   measure        String
+  agents         String[]
+  agentClass     String?
+  comparatorClass String?
   k              Int
   nPatients      Int
   density        Decimal  @db.Decimal(5, 4)
+  minGateScore   Decimal  @db.Decimal(5, 4)
+  /// One representative EffectRecord per trial.
   memberIds      String[]
+  nctIds         String[]
   /// Pooled estimates, Q, I2, tau2, cumulative series, moderator fits.
   stats          Json
   createdAt      DateTime @default(now())
@@ -312,6 +325,8 @@ model Contradiction {
   bId       String?
   nctIds    String[]
   endpointNodeId String
+  agents     String[]
+  agentClass String?
 
   type            String  // C1..C5
   severity        Decimal @db.Decimal(5, 4)

@@ -143,6 +143,7 @@ export async function runNormalize(config: EnigmaConfig, snapshotId: string): Pr
     bySource: { ANALYSIS: 0, DERIVED_ARMS: 0 } as Record<string, number>,
     byMeasure: {} as Record<string, number>,
     directionResolved: 0,
+    derivedPairsNotAnalysed: 0,
     failures: {} as Record<string, number>,
   };
   const fail = (reason: string) => (stats.failures[reason] = (stats.failures[reason] ?? 0) + 1);
@@ -186,6 +187,22 @@ export async function runNormalize(config: EnigmaConfig, snapshotId: string): Pr
         }
         return p;
       };
+
+      // Arm pairs the sponsor posted an analysis for. A derived comparison is only made for one of
+      // these pairs: any two arms of a stratified or extension trial are not a randomized comparison.
+      const trialAnalyses = rawAnalyses.filter((a) => a.nctId === nctId);
+      const titleOf = (g: Row) => String(groupById.get(Number(g.result_group_id))?.title ?? g.ctgov_group_code).toLowerCase().trim();
+      const analysedPairs = new Set<string>();
+      for (const raw of trialAnalyses) {
+        const titles = [...new Set(((raw.payload as Row).groups as Row[]).map(titleOf))];
+        if (titles.length === 2) analysedPairs.add(titles.sort().join(' || '));
+      }
+      const outcomeArms = new Set<string>();
+      for (const o of rawOutcomes.filter((x) => x.nctId === nctId)) {
+        for (const m of (o.payload as Row).measurements as Row[]) outcomeArms.add(titleOf(m));
+      }
+      const pairAllowed = (x: string, y: string) =>
+        analysedPairs.size > 0 ? analysedPairs.has([x.toLowerCase().trim(), y.toLowerCase().trim()].sort().join(' || ')) : outcomeArms.size === 2;
 
       for (const rawOutcome of rawOutcomes.filter((o) => o.nctId === nctId)) {
         const { outcome, measurements, counts } = rawOutcome.payload as { outcome: Row; measurements: Row[]; counts: Row[] };
@@ -332,6 +349,10 @@ export async function runNormalize(config: EnigmaConfig, snapshotId: string): Pr
               for (let j = i + 1; j < list.length; j += 1) {
                 const roles = assignRoles(profile(list[i]![1], list[i]![0]), profile(list[j]![1], list[j]![0]));
                 if ('reason' in roles) continue;
+                if (!pairAllowed(roles.experimental.title, roles.comparator.title)) {
+                  stats.derivedPairsNotAnalysed += 1;
+                  continue;
+                }
                 pending.push({
                   ref: `${outcomeId}|arms:${classification}|${roles.experimental.code}|${roles.comparator.code}`,
                   pairKey: `${outcomeId}|${roles.experimental.code}|${roles.comparator.code}`,
@@ -436,6 +457,8 @@ export async function runNormalize(config: EnigmaConfig, snapshotId: string): Pr
         doseUnit: roles.dose?.unit ?? null,
         comparatorClass: roles.comparatorClass,
         comparatorAgents: roles.comparatorAgents,
+        backgroundAgents: roles.background,
+        comparatorDoseDaily: roles.comparatorDose?.daily ?? null,
         factors: best.preFactors.extend(result.factors).toJSON() as unknown as Prisma.InputJsonValue,
         ruleVersion,
       });

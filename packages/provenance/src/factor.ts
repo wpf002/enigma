@@ -20,6 +20,8 @@ export interface FactorThreshold {
 export interface Factor {
   seq: number;
   stage: FactorStage;
+  /** Which side of a comparison the step belongs to. Null for steps about the pair or cluster. */
+  subject?: 'A' | 'B' | null;
   /** Dotted name of what was evaluated, e.g. "gate.endpoint" or "normalize.ci_to_se". */
   name: string;
   /** Rule id, e.g. "endpoint.same_node". */

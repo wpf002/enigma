@@ -2,6 +2,8 @@ import { differenceFactor, unitFor, type Analyte, type UnitDef } from '@enigma/c
 import { defineRule } from './registry.js';
 
 export const UNIT_RULE = defineRule('UNIT', 'unit.rescale_to_canonical', 'Mean differences are rescaled to the canonical unit of the endpoint analyte.');
+export const UNIT_MISMATCH_RULE = defineRule('UNIT', 'unit.not_of_analyte', 'The posted unit is not a unit of the endpoint analyte (a questionnaire score under a title that mentions body weight). The record is not assigned to the node.');
+export const SIGN_WORDING_RULE = defineRule('DIRECTION', 'direction.outcome_sign_wording', 'The outcome is titled as a reduction, decrease or loss rather than a change. Whether a positive value means more or less of the analyte cannot be read from the record.');
 export const UNIT_UNKNOWN_RULE = defineRule('UNIT', 'unit.unrecognized', 'The posted unit is not one the unit table converts. The record keeps its unit and is only comparable to records with the same unit string.');
 
 /** Units are free text in ClinicalTrials.gov. These catch the spellings the exact table in @enigma/core misses. */

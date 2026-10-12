@@ -15,7 +15,8 @@ describe('classifyEndpoint', () => {
   it('separates HbA1c target thresholds and keeps them apart from the continuous node', () => {
     expect(ep('Percentage of Patients With HbA1c Level Less Than 7% at Week 24', 'RR').nodeId).toBe('hba1c-lt7');
     expect(ep('Percentage of patients with glycosylated hemoglobin (HbA1c) level less than or equal to 6.5%', 'OR').nodeId).toBe('hba1c-le65');
-    expect(ep('Participants achieving HbA1c < 8%', 'RR').nodeId).toBe('hba1c-target');
+    expect(ep('Participants achieving HbA1c < 8%', 'RR').nodeId).toBeNull();
+    expect(ep('Insulin Dose Per Kilogram of Body Weight', 'MD', 'U/kg').nodeId).toBeNull();
   });
   it('assigns cardiovascular composites from their components', () => {
     expect(ep('Time to first occurrence of CV death, non-fatal MI (excluding silent MI), and non-fatal stroke', 'HR').nodeId).toBe('mace-3p');

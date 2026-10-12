@@ -5,6 +5,8 @@ import { createLogger, loadConfig } from '@enigma/shared';
 import { buildSubset } from './aact/subset.js';
 import { resolveSnapshotId } from './context.js';
 import { runAuditSample } from './steps/auditSample.js';
+import { runContradict } from './steps/contradict.js';
+import { runControversyEval } from './steps/controversyEval.js';
 import { runGate } from './steps/gate.js';
 import { runGateEval } from './steps/gateEval.js';
 import { runHarmonize } from './steps/harmonize.js';
@@ -35,12 +37,28 @@ const commands: Record<string, () => Promise<void>> = {
   gate: async () => {
     await runGate(loadConfig(), await resolveSnapshotId(flag('snapshot')));
   },
+  contradict: async () => {
+    await runContradict(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  'controversy-eval': async () => {
+    await runControversyEval(await resolveSnapshotId(flag('snapshot')));
+  },
   'gate-eval': async () => {
     await runGateEval(await resolveSnapshotId(flag('snapshot')));
   },
   'audit-sample': async () => {
     await runAuditSample(await resolveSnapshotId(flag('snapshot')));
   },
+};
+
+/** Derived layers in dependency order. Each step clears and rebuilds its own output. */
+const PIPELINE = ['normalize', 'harmonize', 'gate', 'contradict'];
+
+commands.pipeline = async () => {
+  for (const step of PIPELINE) {
+    log.info(`pipeline: ${step}`);
+    await commands[step]!();
+  }
 };
 
 async function main() {

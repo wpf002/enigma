@@ -18,6 +18,7 @@ class Threshold(Model):
 class Factor(Model):
     seq: int
     stage: Stage
+    subject: str | None = None
     name: str
     rule: str
     rule_version: str

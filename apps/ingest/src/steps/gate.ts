@@ -14,6 +14,7 @@ const RECORD_FIELDS = {
   value: true, ciLow: true, ciHigh: true, se: true, nAnalyzed: true, controlRisk: true, pooledSd: true, units: true,
   lowerIsBetter: true, directionResolved: true, experimentalLabel: true, comparatorLabel: true,
   agents: true, agentClass: true, doseDaily: true, doseUnit: true, comparatorClass: true, comparatorAgents: true,
+  backgroundAgents: true, comparatorDoseDaily: true,
   interventionHash: true, timepointDays: true, analysisPopulation: true,
 } as const;
 
@@ -64,6 +65,8 @@ export const toEngineRecord = (r: Rec) => ({
   doseUnit: r.doseUnit,
   comparatorClass: r.comparatorClass,
   comparatorAgents: r.comparatorAgents,
+  backgroundAgents: r.backgroundAgents,
+  comparatorDoseDaily: r.comparatorDoseDaily?.toNumber() ?? null,
   timepointDays: r.timepointDays,
   analysisPopulation: r.analysisPopulation,
 });

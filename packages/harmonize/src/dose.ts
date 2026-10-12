@@ -46,14 +46,25 @@ function convert(amount: number, from: Agent['unit'], to: Agent['unit']): number
 export function parseDose(agent: Agent, alias: string, title: string, description: string | null): Dose | null {
   const s = title.toLowerCase();
   const at = s.indexOf(alias);
+  let perDose: number | null = null;
+  let read = '';
+  // "Alogliptin 25", "Lina5", "Sita 100": a bare number straight after the name is in the agent's own unit.
+  const glued = at >= 0 ? s.slice(at + alias.length).match(/^\s*(\d+(?:\.\d+)?)(?!\s*(mg|mcg|µg|μg|ug|g|iu|units?|u|%|\.\d|\d|weeks?|days?|months?)\b)/) : null;
   const amount = /(\d+(?:\.\d+)?)\s*(mg|mcg|µg|μg|ug|g|iu|units?|u)\b(?!\s*\/\s*(kg|dl|ml|l)\b)/g;
   const matches = [...s.matchAll(amount)];
-  if (matches.length === 0) return null;
-  const after = matches.find((m) => m.index >= at);
-  const pick = at >= 0 ? (after ?? matches[matches.length - 1]!) : matches[0]!;
-  const unit = UNIT_TO[pick[2]!];
-  if (!unit) return null;
-  const perDose = convert(Number(pick[1]) * unit.factor, unit.unit, agent.unit);
+  if (matches.length > 0) {
+    const after = matches.find((m) => m.index >= at);
+    const pick = at >= 0 ? (after ?? matches[matches.length - 1]!) : matches[0]!;
+    const unit = UNIT_TO[pick[2]!];
+    if (unit) {
+      perDose = convert(Number(pick[1]) * unit.factor, unit.unit, agent.unit);
+      read = `${pick[1]} ${pick[2]}`;
+    }
+  }
+  if (perDose === null && glued) {
+    perDose = Number(glued[1]);
+    read = `${glued[1]} ${agent.unit} (unit not stated)`;
+  }
   if (perDose === null || !(perDose > 0)) return null;
 
   let perDay = 1;
@@ -66,5 +77,5 @@ export function parseDose(agent: Agent, alias: string, title: string, descriptio
       break;
     }
   }
-  return { daily: perDose * perDay, unit: agent.unit, source: `${pick[1]} ${pick[2]} ${label}` };
+  return { daily: perDose * perDay, unit: agent.unit, source: `${read} ${label}` };
 }

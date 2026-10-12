@@ -25,6 +25,79 @@ describe('findAgents', () => {
   });
 });
 
+describe('intervention parsing strictness', () => {
+  it('does not read ordinary words as drug abbreviations', () => {
+    expect(findAgents('Met Goal').map((h) => h.agent.id)).toEqual([]);
+    expect(findAgents('Sita + Met').map((h) => h.agent.id)).toEqual(['sitagliptin', 'metformin']);
+    expect(findAgents('Placebo + Met').map((h) => h.agent.id)).toEqual(['metformin']);
+    expect(findAgents('Lina5Pio15').map((h) => h.agent.id)).toEqual(['linagliptin', 'pioglitazone']);
+  });
+  it('gives arms with an unrecognized drug a pseudo-agent', () => {
+    const none: DesignGroup[] = [];
+    const code = profileArm({ code: 'a', title: 'BI 456906 1.8 mg twice weekly', description: 'on background metformin' }, none);
+    expect(code.unknown).toEqual(['?bi456906']);
+    const inn = profileArm({ code: 'b', title: 'Rivoglitazone 1.5mg', description: null }, none);
+    expect(inn.unknown).toEqual(['?rivoglitazone']);
+    expect(profileArm({ code: 'c', title: 'Sitagliptin 100 mg once daily + Metformin', description: null }, none).unknown).toEqual([]);
+    const typed: DesignGroup[] = [
+      { title: 'Rivoglitazone 1.5mg', groupType: 'EXPERIMENTAL', description: null },
+      { title: 'Pioglitazone 45 mg', groupType: 'ACTIVE_COMPARATOR', description: null },
+    ];
+    const r = ok(assignRoles(
+      profileArm({ code: 'p', title: 'Pioglitazone 45 mg', description: null }, typed),
+      profileArm({ code: 'r', title: 'Rivoglitazone 1.5mg', description: null }, typed),
+    ));
+    expect(r.experimental.code).toBe('r');
+    expect(r.comparatorClass).toBe('ACTIVE');
+    expect([r.agents, r.comparatorAgents].flat().sort()).toEqual(['?rivoglitazone', 'pioglitazone']);
+  });
+  it('reads doses glued to the name or given without a unit', () => {
+    const none: DesignGroup[] = [];
+    expect(profileArm({ code: 'a', title: 'Alogliptin 25 + Pioglitazone', description: null }, none).doses.alogliptin?.daily).toBe(25);
+    expect(profileArm({ code: 'b', title: 'Lina5', description: null }, none).doses.linagliptin?.daily).toBe(5);
+  });
+  it('does not pair a placebo arm that carries an extra drug with an arm that lacks it', () => {
+    const none: DesignGroup[] = [];
+    const r = assignRoles(
+      profileArm({ code: 'a', title: 'Empagliflozin 10 mg (drug naive)', description: null }, none),
+      profileArm({ code: 'b', title: 'Placebo (Metformin)', description: null }, none),
+    );
+    expect('reason' in r && r.rule).toBe('arm_role.placebo_with_extra_agent');
+  });
+  it('does not use the description when the title names something it cannot place', () => {
+    const none: DesignGroup[] = [];
+    const arm = profileArm({ code: 'a', title: 'Old Lina', description: 'Patients pre-treated with linagliptin' }, none);
+    expect(arm.agents).toEqual([]);
+    expect(arm.unknown).toEqual(['?lina']);
+    expect(profileArm({ code: 'b', title: 'Arm A', description: 'Linagliptin 5 mg once daily' }, none).agents).toEqual([]);
+    expect(profileArm({ code: 'c', title: 'Lina 5mg', description: null }, none).agents.map((a) => a.id)).toEqual(['linagliptin']);
+  });
+  it('does not pair sequence arms or background arms of a stratified design', () => {
+    const none: DesignGroup[] = [];
+    const seq = assignRoles(profileArm({ code: 'a', title: 'Placebo/Metformin 1000 mg b.i.d.', description: null }, none), profileArm({ code: 'b', title: 'Metformin 500 mg b.i.d.', description: null }, none));
+    expect('reason' in seq && seq.rule).toBe('arm_role.sequence_arm');
+    const strata: DesignGroup[] = [
+      { title: 'Alogliptin Monotherapy', groupType: 'EXPERIMENTAL', description: null },
+      { title: 'Pioglitazone', groupType: 'OTHER', description: null },
+    ];
+    const cross = assignRoles(profileArm({ code: 'a', title: 'Alogliptin Monotherapy', description: null }, strata), profileArm({ code: 'b', title: 'Pioglitazone', description: null }, strata));
+    expect('reason' in cross && cross.reason).toBe('ARM_ROLES_UNDETERMINED');
+  });
+  it('classes a background-only control arm as placebo when its description says so', () => {
+    const none: DesignGroup[] = [];
+    const r = ok(assignRoles(
+      profileArm({ code: 'a', title: 'Metformin + Alogliptin Add-on Therapy', description: null }, none),
+      profileArm({ code: 'b', title: 'Metformin', description: 'stable dose of metformin and also received alogliptin placebo-matching tablets' }, none),
+    ));
+    expect(r).toMatchObject({ agents: ['alogliptin'], background: ['metformin'], comparatorClass: 'PLACEBO' });
+  });
+  it('keeps the reference dose of a dose comparison', () => {
+    const none: DesignGroup[] = [];
+    const r = ok(assignRoles(profileArm({ code: 'a', title: 'Tirzepatide 15 mg', description: null }, none), profileArm({ code: 'b', title: 'Tirzepatide 10 mg', description: null }, none)));
+    expect(r.comparatorDose?.daily).toBe(10);
+  });
+});
+
 describe('assignRoles', () => {
   it('treats the placebo arm as comparator and removes shared background', () => {
     const r = ok(assignRoles(arm('OG000', 'Placebo + Metformin'), arm('OG001', 'Sitagliptin 100 mg + Metformin')));

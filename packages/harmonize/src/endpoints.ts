@@ -62,8 +62,8 @@ export const ENDPOINTS: EndpointDef[] = [
   N({ id: 'glycemic', parent: null, label: 'Glycemic control', family: 'glycemic', kind: null, lowerIsBetter: true, mesh: ['Glycemic Control', 'Blood Glucose'] }),
   N({ id: 'hba1c-change', parent: 'glycemic', label: 'HbA1c', family: 'glycemic', kind: 'CONTINUOUS', lowerIsBetter: true, analyte: 'hba1c',
       include: HBA1C, mesh: ['Glycated Hemoglobin'] }),
-  N({ id: 'hba1c-target', parent: 'glycemic', label: 'HbA1c target attainment (threshold not standard)', family: 'glycemic', kind: 'EVENT', lowerIsBetter: false,
-      include: HBA1C }),
+  // Abstract: attainment of different thresholds is not one endpoint, so only the two standard thresholds are nodes.
+  N({ id: 'hba1c-target', parent: 'glycemic', label: 'HbA1c target attainment', family: 'glycemic', kind: null, lowerIsBetter: false }),
   N({ id: 'hba1c-lt7', parent: 'hba1c-target', label: 'HbA1c below 7.0%', family: 'glycemic', kind: 'EVENT', lowerIsBetter: false,
       include: new RegExp(`(${HBA1C.source}).{0,60}?(<|≤|<=|=<|less than( or equal to)?|below|under|at or below)\\s*7(\\.0)?\\b(?!\\.[1-9])|7(\\.0)?\\s*%? or (less|lower|below)`) }),
   N({ id: 'hba1c-le65', parent: 'hba1c-target', label: 'HbA1c at or below 6.5%', family: 'glycemic', kind: 'EVENT', lowerIsBetter: false,
@@ -80,9 +80,9 @@ export const ENDPOINTS: EndpointDef[] = [
   // ---- body weight
   N({ id: 'weight', parent: null, label: 'Body weight', family: 'weight', kind: null, lowerIsBetter: true, mesh: ['Body Weight'] }),
   N({ id: 'weight-change', parent: 'weight', label: 'Body weight (kg)', family: 'weight', kind: 'CONTINUOUS', lowerIsBetter: true, analyte: 'weight', percentUnits: false,
-      include: WEIGHT, exclude: /waist|birth|fat|lean|gain of|loss of (at least|≥|>)|responder/ }),
+      include: WEIGHT, exclude: /waist|birth|fat|lean|gain of|loss of (at least|≥|>)|responder|per (kg|kilogram)|insulin dose|dose per|\/ ?kg/ }),
   N({ id: 'weight-change-pct', parent: 'weight', label: 'Body weight (percent change)', family: 'weight', kind: 'CONTINUOUS', lowerIsBetter: true, percentUnits: true,
-      include: WEIGHT, exclude: /waist|birth|fat|lean|responder/ }),
+      include: WEIGHT, exclude: /waist|birth|fat|lean|responder|per (kg|kilogram)|insulin dose|dose per|\/ ?kg/ }),
   N({ id: 'weight-loss-5pct', parent: 'weight', label: 'Weight loss of at least 5%', family: 'weight', kind: 'EVENT', lowerIsBetter: false,
       include: new RegExp(`(${WEIGHT.source}).{0,80}?(≥|>=|at least|more than|greater than( or equal to)?|>)\\s*5(\\.0)?\\s*(%|percent)|(≥|>=|at least|more than|greater than( or equal to)?|>)\\s*5(\\.0)?\\s*(%|percent).{0,60}(${WEIGHT.source})|5\\s*(%|percent) (or more|or greater).{0,40}(${WEIGHT.source})`) }),
   N({ id: 'bmi-change', parent: 'weight', label: 'Body mass index', family: 'weight', kind: 'CONTINUOUS', lowerIsBetter: true, analyte: 'bmi',
@@ -214,7 +214,7 @@ export interface EndpointDecision {
   nodeId: string | null;
   rule: string;
   /** Why no node was assigned. */
-  reason: 'UNMAPPED' | 'AMBIGUOUS' | 'CLASSIFICATION_BASELINE' | 'CLASSIFICATION_UNRECOGNIZED' | null;
+  reason: 'UNMAPPED' | 'AMBIGUOUS' | 'CLASSIFICATION_BASELINE' | 'CLASSIFICATION_UNRECOGNIZED' | 'UNIT_NOT_OF_ANALYTE' | null;
   classificationRole: ClassificationRole;
   /** Follow-up read from the classification when it is a visit ("Week 24"). */
   classificationDays: number | null;
@@ -250,6 +250,8 @@ export function classifyEndpoint(input: {
   }
   const base = { classificationRole: role, classificationDays: role === 'VISIT' ? days : null };
 
+  // Baseline tables are sometimes posted as outcomes.
+  if (/demographic|baseline characteristic/.test(title)) return { ...base, nodeId: null, rule: R.unmapped, reason: 'UNMAPPED', matchedOn: title };
   if (role === 'BASELINE') return { ...base, nodeId: null, rule: R.baseline, reason: 'CLASSIFICATION_BASELINE', matchedOn: cls };
   if (role === 'ENDPOINT') return { ...base, nodeId: classNodes[0]!.id, rule: R.classification, reason: null, matchedOn: cls };
   if (role === 'UNRECOGNIZED') return { ...base, nodeId: null, rule: R.subgroup, reason: 'CLASSIFICATION_UNRECOGNIZED', matchedOn: cls };
