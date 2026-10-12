@@ -2,7 +2,14 @@ import math
 
 import pytest
 
-from enigma_engine.gate import DIMENSIONS, GateRecord, Population, Tuning, apparent_conflict, score_pair
+from enigma_engine.gate import (
+    DIMENSIONS,
+    GateRecord,
+    Population,
+    Tuning,
+    apparent_conflict,
+    score_pair,
+)
 
 T = Tuning()
 

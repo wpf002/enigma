@@ -3,7 +3,12 @@ import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { contradictionRoutes } from './routes/contradictions.js';
+import { endpointRoutes } from './routes/endpoints.js';
+import { failureRoutes } from './routes/failures.js';
+import { mapRoutes } from './routes/map.js';
 import { overviewRoutes } from './routes/overview.js';
+import { trialRoutes } from './routes/trials.js';
+import { watchlistRoutes } from './routes/watchlists.js';
 
 /** Read API over the claim store. The only writes are watchlists and alert read state. */
 export async function buildApp(): Promise<FastifyInstance> {
@@ -21,5 +26,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.get('/health', async () => ({ ok: true, service: 'enigma-api' }));
   await app.register(overviewRoutes);
   await app.register(contradictionRoutes);
+  await app.register(mapRoutes);
+  await app.register(endpointRoutes);
+  await app.register(failureRoutes);
+  await app.register(trialRoutes);
+  await app.register(watchlistRoutes);
   return app;
 }

@@ -3,9 +3,16 @@ import math
 import pytest
 
 from enigma_engine.contradiction import (
-    ClusterInput, GateNotPassed, Member, PairInput, TrialMeta, analyze_cluster, benjamini_hochberg, classify_pair,
+    ClusterInput,
+    GateNotPassed,
+    Member,
+    PairInput,
+    TrialMeta,
+    analyze_cluster,
+    benjamini_hochberg,
+    classify_pair,
 )
-from enigma_engine.gate import GateRecord, Population, Tuning
+from enigma_engine.gate import GateRecord, Tuning
 from enigma_engine.meta import cumulative, meta_regression, pool
 from enigma_engine.ranking import RankItem, rank
 

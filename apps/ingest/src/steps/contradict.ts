@@ -63,6 +63,13 @@ interface ClusterResult {
   findings: ClusterFinding[];
 }
 
+/**
+ * Contradiction ids are derived from what the contradiction is, so a rebuild of the same snapshot
+ * with the same rules gives the same ids and saved links keep working.
+ */
+const stableId = (...parts: (string | null)[]) => `c${hashOf(parts).slice(0, 24)}`;
+const recordKey = (r: Rec) => `${r.nctId}|${r.outcomeMeasureId}|${r.classification ?? ''}|${r.experimentalLabel}|${r.comparatorLabel}`;
+
 const seriesKey = (r: Pick<Rec, 'nctId' | 'endpointNodeId' | 'experimentalLabel' | 'comparatorLabel'>) =>
   `${r.nctId}|${r.endpointNodeId}|${r.experimentalLabel}|${r.comparatorLabel}`;
 
@@ -385,6 +392,7 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
         });
       tally(resolved.value, r.discriminator, r.type);
       rows.push({
+        id: stableId(snapshotId, r.type, a.endpointNodeId, ...[recordKey(a), recordKey(b)].sort()),
         snapshotId,
         edgeId: e.id,
         clusterId: clusterIdBySeries.get(seriesKey(a)) ?? null,
@@ -453,6 +461,7 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
         });
       tally(resolved.value, f.discriminator, f.type);
       rows.push({
+        id: stableId(snapshotId, f.type, c.key),
         snapshotId,
         clusterId: id,
         nctIds,

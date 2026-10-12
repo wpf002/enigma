@@ -4,6 +4,7 @@ import { getDb } from '@enigma/db';
 import { createLogger, loadConfig } from '@enigma/shared';
 import { buildSubset } from './aact/subset.js';
 import { resolveSnapshotId } from './context.js';
+import { runAlerts } from './steps/alerts.js';
 import { runAuditSample } from './steps/auditSample.js';
 import { runContradict } from './steps/contradict.js';
 import { runControversyEval } from './steps/controversyEval.js';
@@ -51,6 +52,9 @@ const commands: Record<string, () => Promise<void>> = {
   'export-dossiers': async () => {
     await exportDossiers(await resolveSnapshotId(flag('snapshot')), Number(flag('top') ?? 5));
   },
+  alerts: async () => {
+    await runAlerts(await resolveSnapshotId(flag('snapshot')));
+  },
   'controversy-eval': async () => {
     await runControversyEval(await resolveSnapshotId(flag('snapshot')));
   },
@@ -63,7 +67,7 @@ const commands: Record<string, () => Promise<void>> = {
 };
 
 /** Derived layers in dependency order. Each step clears and rebuilds its own output. */
-const PIPELINE = ['normalize', 'harmonize', 'gate', 'contradict', 'rank', 'dossier'];
+const PIPELINE = ['normalize', 'harmonize', 'gate', 'contradict', 'rank', 'dossier', 'alerts'];
 
 commands.pipeline = async () => {
   for (const step of PIPELINE) {

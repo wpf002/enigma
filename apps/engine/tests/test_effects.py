@@ -4,7 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from enigma_engine.effects import Arm, Candidate, ConversionError, convert, make_effect, normalize, to_scale
+from enigma_engine.effects import (
+    Arm,
+    Candidate,
+    ConversionError,
+    convert,
+    make_effect,
+    normalize,
+    to_scale,
+)
 
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "effects_roundtrip_500.json"
 TOLERANCE = 1e-9

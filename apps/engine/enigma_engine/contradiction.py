@@ -372,7 +372,10 @@ def analyze_cluster(c: ClusterInput, t: Tuning) -> ClusterResult:
                 score=severity, outcome="FAIL",
             )
             disc = (
-                Discriminator(basis="MEASURED", name=f"{partial.name} (partial, p={partial.p:.2f})", weight=partial.q_explained)
+                Discriminator(
+                    basis="MEASURED", weight=partial.q_explained,
+                    name=f"{partial.name}, which accounts for part of the spread (slope p {'< 0.01' if partial.p < 0.01 else f'= {partial.p:.2f}'})",
+                )
                 if partial and partial.p < 0.2 else Discriminator(basis="UNIDENTIFIED", name="unidentified")
             )
             out.findings.append(
@@ -426,4 +429,4 @@ def analyze_cluster(c: ClusterInput, t: Tuning) -> ClusterResult:
     return out
 
 
-__all__ = ["classify_pair", "analyze_cluster", "PairInput", "PairResult", "ClusterInput", "ClusterResult", "to_scale"]
+__all__ = ["ClusterInput", "ClusterResult", "PairInput", "PairResult", "analyze_cluster", "classify_pair", "to_scale"]

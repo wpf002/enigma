@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "enigma-web", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@enigma/web", "dev"], "port": 3210 }
+  ]
+}

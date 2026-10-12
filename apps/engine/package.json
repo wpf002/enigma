@@ -1,0 +1,11 @@
+{
+  "name": "@enigma/engine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Python engine. This file only lets turbo start and test it with the other services.",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- sh -c 'uv run uvicorn main:app --reload --port ${ENGINE_PORT:-8100}'",
+    "test": "uv run pytest -q",
+    "lint": "uv run ruff check ."
+  }
+}

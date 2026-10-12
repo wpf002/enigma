@@ -50,20 +50,27 @@ TypeScript orchestrates. Python computes. Statistical tests live in exactly one 
 
 ## Quick start
 
+Needs Node 20+, pnpm 9, Docker, Python 3.11+ and `uv`.
+
 ```bash
 git clone git@github.com:wpf002/enigma.git && cd enigma
 pnpm install
-docker compose -f infra/docker/docker-compose.yml up -d
-cp .env.example .env
-pnpm db:migrate
-
-# AACT snapshot (free CTTI account required for the dump)
-pnpm aact:restore infra/aact/dumps/<snapshot>.dmp
-
-# Python engine
+cp .env.example .env          # change ENIGMA_PG_PORT / AACT_PG_PORT / WEB_PORT here if the defaults are taken
 cd apps/engine && uv sync && cd ../..
+```
 
-pnpm dev
+Cold start in one command. It starts both Postgres containers, applies migrations, restores AACT and writes the immutable raw layer:
+
+```bash
+pnpm cold-start infra/aact/dumps/<snapshot>.dmp   # full AACT dump (free CTTI account)
+pnpm cold-start --subset                          # no dump: same ctgov tables, filled from the public ClinicalTrials.gov API
+```
+
+Then run the services and the pipeline:
+
+```bash
+pnpm dev               # web, api and engine
+pnpm ingest pipeline   # normalize -> harmonize -> gate -> contradict -> rank -> dossier -> alerts
 ```
 
 | Service | Port |
@@ -73,6 +80,20 @@ pnpm dev
 | engine | 8100 |
 | postgres (enigma) | 5432 |
 | postgres (aact) | 5433 |
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `pnpm ingest <step>` | One pipeline step: `snapshot`, `normalize`, `harmonize`, `gate`, `contradict`, `rank`, `dossier`, `alerts` |
+| `pnpm ingest gate-eval` | Phase 3 gate: recovery of a published review's included pairs |
+| `pnpm ingest controversy-eval` | Phase 4 gate: documented controversies surfaced |
+| `pnpm ingest audit-sample` | Phase 2 gate: 200 harmonization decisions as a CSV for clinician review |
+| `pnpm ingest export-dossiers --top 5` | Phase 5 gate: top dossiers as Markdown for an expert read |
+| `pnpm test` | Unit tests: TypeScript packages, API, and the engine (`pytest`) |
+| `pnpm test:e2e` | Snapshot delta and watchlist alerts, end to end, in scratch databases |
+
+Every step clears and rebuilds its own derived rows. The raw layer is never modified: its tables reject UPDATE, DELETE and TRUNCATE.
 
 ---
 
@@ -105,7 +126,24 @@ It does not emit clinical recommendations, treatment guidance, or judgments abou
 
 ## Status
 
-Phase 0 — bootstrap and ingestion.
+v1 (roadmap Phases 0 to 6) is built. Most exit gates are not met or not run yet. The app reports them live under **Gates and rules**.
+
+| Phase | Exit gate | Status on the first corpus (1,793 type 2 diabetes trials) |
+|---|---|---|
+| 0 Ingestion | Cold start in one command | Partial. `pnpm cold-start --subset` reproduces the same checksum from empty volumes. Not yet run against a CTTI dump. |
+| 1 Normalization | 95% of trials yield an effect record; conversions round-trip | Not met. 58% of all trials, 73% of parallel multi-arm trials. Round-trip passes on the 500-record fixture. |
+| 2 Harmonization | Clinician audit of 200 decisions | Not run. All 45 rules are marked `PENDING_HUMAN_REVIEW`. |
+| 3 Gate | Recover 85% of a review's included pairs | Not met. The two review fixtures pool across agents of a class, which the gate rejects by design. |
+| 4 Contradictions | Surface 12 of 20 documented controversies | Not met. 0 of the 9 listed. |
+| 5 Dossiers | Expert rates 4 of 5 "would investigate" | Not run. |
+| 6 Web | Search to dossier in under 60 seconds | Not timed with a user. |
+
+Known limits:
+
+- The first snapshot is an API subset in AACT's table shape, labelled `CTGOV_API_SUBSET`. The loader has not been run against a real AACT dump.
+- Harmonization rules, the review registry (`fixtures/reviews`) and the controversy list were drafted with LLM help and are unreviewed.
+- A placebo arm that switches to active treatment in an extension period is not detected, so late-visit comparisons from such trials can appear as contradictions.
+- C3 requires `|z| > 1.96` on the difference, which is stricter than roadmap §5. Pairwise tests are held to a 5% false discovery rate.
 
 See `ENIGMA_ROADMAP.md` for phase gates and exit criteria.
 

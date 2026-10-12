@@ -8,7 +8,8 @@ one hard failure ends the comparison.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .effects import Z95, Effect, convertible, to_scale
 from .models import Model

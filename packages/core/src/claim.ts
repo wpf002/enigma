@@ -60,6 +60,8 @@ const party = (p: ClaimParty): string => `${p.label} (${formatEffect(p.effect, p
 
 export function renderDiscriminator(d: DiscriminatingVariable): string {
   if (d.basis === 'UNIDENTIFIED') return 'unidentified: no recorded covariate differs between the two';
+  // cluster-level variables (a moderator across many trials) have no pair of values
+  if (d.a === null && d.b === null) return d.name;
   return `${d.name} (${d.a ?? 'not recorded'} vs ${d.b ?? 'not recorded'})`;
 }
 

@@ -7,7 +7,8 @@ export const db = getDb();
 export const num = (d: { toNumber(): number } | null | undefined): number | null => (d === null || d === undefined ? null : d.toNumber());
 export const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString().slice(0, 10) : null);
 
-export const agentLabel = (id: string): string => AGENT_BY_ID.get(id)?.label ?? (id.startsWith('?') ? `${id.slice(1)} (unmapped)` : id);
+/** Known agents by label. A sponsor code that is not in the dictionary is shown as the code. */
+export const agentLabel = (id: string): string => AGENT_BY_ID.get(id)?.label ?? (id.startsWith('?') ? `${id.slice(1).toUpperCase()} (sponsor code)` : id);
 export const endpointLabel = (id: string | null): string => (id ? (ENDPOINT_BY_ID.get(id)?.label ?? id) : 'unmapped');
 
 /** Newest snapshot unless the request names one. */

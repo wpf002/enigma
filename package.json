@@ -15,14 +15,15 @@
     "db:migrate": "pnpm --filter @enigma/db migrate",
     "db:studio": "pnpm --filter @enigma/db studio",
     "aact:restore": "bash infra/aact/restore.sh",
-    "engine:dev": "cd apps/engine && uv run --env-file ../../.env uvicorn main:app --reload --port ${ENGINE_PORT:-8100}",
+    "engine:dev": "pnpm --filter @enigma/engine dev",
     "db:deploy": "pnpm --filter @enigma/db run migrate:deploy",
     "db:reset": "pnpm --filter @enigma/db run reset",
     "stack:up": "docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait",
     "stack:down": "docker compose --env-file .env -f infra/docker/docker-compose.yml down",
     "aact:subset": "pnpm ingest aact-subset",
     "ingest": "pnpm --filter @enigma/ingest run cli",
-    "cold-start": "bash scripts/cold-start.sh"
+    "cold-start": "bash scripts/cold-start.sh",
+    "test:e2e": "bash scripts/e2e-delta.sh"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

@@ -70,6 +70,8 @@ importers:
         specifier: ^0.13.5
         version: 0.13.9
 
+  apps/engine: {}
+
   apps/ingest:
     dependencies:
       '@enigma/core':
@@ -134,6 +136,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.0
         version: 10.6.1(postcss@8.5.29)
+      dotenv-cli:
+        specifier: ^7.4.0
+        version: 7.4.4
       postcss:
         specifier: ^8.4.0
         version: 8.5.29

@@ -2,7 +2,13 @@ from fastapi import FastAPI
 
 from enigma_engine import ENGINE_RULE_VERSION
 from enigma_engine.contradiction import (
-    ClusterInput, ClusterResult, PairInput, PairResult, analyze_cluster, benjamini_hochberg, classify_pair,
+    ClusterInput,
+    ClusterResult,
+    PairInput,
+    PairResult,
+    analyze_cluster,
+    benjamini_hochberg,
+    classify_pair,
 )
 from enigma_engine.effects import Candidate, Normalized, normalize
 from enigma_engine.gate import Edge, GateRecord, Population, Tuning, score_pair
