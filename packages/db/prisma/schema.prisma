@@ -160,6 +160,8 @@ model EffectRecord {
   sourceKind       String
 
   outcomeTitle String
+  /// outcome_measurements.classification, when the outcome posts one row per class (usually a visit).
+  classification String?
   outcomeType  String?
   timeFrame    String?
   units        String?

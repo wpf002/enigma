@@ -3,6 +3,8 @@
 import { getDb } from '@enigma/db';
 import { createLogger, loadConfig } from '@enigma/shared';
 import { buildSubset } from './aact/subset.js';
+import { resolveSnapshotId } from './context.js';
+import { runNormalize } from './steps/normalize.js';
 import { runSnapshot } from './steps/snapshot.js';
 
 const log = createLogger('ingest');
@@ -19,6 +21,9 @@ const commands: Record<string, () => Promise<void>> = {
   },
   snapshot: async () => {
     await runSnapshot(loadConfig());
+  },
+  normalize: async () => {
+    await runNormalize(loadConfig(), await resolveSnapshotId(flag('snapshot')));
   },
 };
 
