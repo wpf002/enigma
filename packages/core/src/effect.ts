@@ -64,9 +64,13 @@ export function effectSize(input: EffectSize): EffectSize {
   return Object.freeze({ ...input });
 }
 
-/** "HR 0.86 (95% CI 0.74 to 0.99)". Display only. */
-export function formatEffect(effect: Pick<EffectSize, 'measure' | 'value' | 'ciLow' | 'ciHigh' | 'ciLevel'>): string {
+/** "HR 0.86 (95% CI 0.74 to 0.99)", or "MD -7.89 mmHg (95% CI -10.14 to -5.64)" when a unit is given. Display only. */
+export function formatEffect(
+  effect: Pick<EffectSize, 'measure' | 'value' | 'ciLow' | 'ciHigh' | 'ciLevel'>,
+  unit?: string | null,
+): string {
   const d = isRatio(effect.measure) ? 2 : Math.abs(effect.value) < 10 ? 2 : 1;
   const pct = Math.round(effect.ciLevel * 100);
-  return `${effect.measure} ${effect.value.toFixed(d)} (${pct}% CI ${effect.ciLow.toFixed(d)} to ${effect.ciHigh.toFixed(d)})`;
+  const u = unit && !isRatio(effect.measure) ? ` ${unit}` : '';
+  return `${effect.measure} ${effect.value.toFixed(d)}${u} (${pct}% CI ${effect.ciLow.toFixed(d)} to ${effect.ciHigh.toFixed(d)})`;
 }

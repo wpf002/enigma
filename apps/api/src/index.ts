@@ -1,11 +1,10 @@
-import Fastify from 'fastify';
+import { buildApp } from './app.js';
 
-const app = Fastify({ logger: true });
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
 
-app.get('/health', async () => ({ ok: true, service: 'enigma-api' }));
-
-const port = Number(process.env.PORT ?? 4000);
-app.listen({ port, host: '0.0.0.0' }).catch((err) => {
-  app.log.error(err);
-  process.exit(1);
-});
+buildApp()
+  .then((app) => app.listen({ port, host: '0.0.0.0' }).then(() => console.log(`enigma-api listening on :${port}`)))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

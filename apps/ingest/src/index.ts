@@ -7,10 +7,12 @@ import { resolveSnapshotId } from './context.js';
 import { runAuditSample } from './steps/auditSample.js';
 import { runContradict } from './steps/contradict.js';
 import { runControversyEval } from './steps/controversyEval.js';
+import { exportDossiers, runDossier } from './steps/dossier.js';
 import { runGate } from './steps/gate.js';
 import { runGateEval } from './steps/gateEval.js';
 import { runHarmonize } from './steps/harmonize.js';
 import { runNormalize } from './steps/normalize.js';
+import { runRank } from './steps/rank.js';
 import { runSnapshot } from './steps/snapshot.js';
 
 const log = createLogger('ingest');
@@ -40,6 +42,15 @@ const commands: Record<string, () => Promise<void>> = {
   contradict: async () => {
     await runContradict(loadConfig(), await resolveSnapshotId(flag('snapshot')));
   },
+  rank: async () => {
+    await runRank(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  dossier: async () => {
+    await runDossier(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  'export-dossiers': async () => {
+    await exportDossiers(await resolveSnapshotId(flag('snapshot')), Number(flag('top') ?? 5));
+  },
   'controversy-eval': async () => {
     await runControversyEval(await resolveSnapshotId(flag('snapshot')));
   },
@@ -52,7 +63,7 @@ const commands: Record<string, () => Promise<void>> = {
 };
 
 /** Derived layers in dependency order. Each step clears and rebuilds its own output. */
-const PIPELINE = ['normalize', 'harmonize', 'gate', 'contradict'];
+const PIPELINE = ['normalize', 'harmonize', 'gate', 'contradict', 'rank', 'dossier'];
 
 commands.pipeline = async () => {
   for (const step of PIPELINE) {

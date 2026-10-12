@@ -26,6 +26,8 @@ export interface ClaimParty {
   readonly label: string;
   readonly nctIds: readonly string[];
   readonly effect: Pick<EffectSize, 'measure' | 'value' | 'ciLow' | 'ciHigh' | 'ciLevel'>;
+  /** Unit of a mean difference. Null for ratios and standardized differences. */
+  readonly unit?: string | null;
 }
 
 /** A condition under which the two results were judged comparable. One per gate dimension. */
@@ -54,7 +56,7 @@ export interface Claim {
 declare const claimSentence: unique symbol;
 export type ClaimSentence = string & { readonly [claimSentence]: true };
 
-const party = (p: ClaimParty): string => `${p.label} (${formatEffect(p.effect)})`;
+const party = (p: ClaimParty): string => `${p.label} (${formatEffect(p.effect, p.unit)})`;
 
 export function renderDiscriminator(d: DiscriminatingVariable): string {
   if (d.basis === 'UNIDENTIFIED') return 'unidentified: no recorded covariate differs between the two';

@@ -71,8 +71,8 @@ const agentLabel = (ids: string[]) => ids.map((id) => AGENT_BY_ID.get(id)?.label
 const days = (d: number | null) => (d === null ? 'not recorded' : d >= 540 ? `${(d / 365.25).toFixed(1)} years` : `${Math.round(d / 7)} weeks`);
 const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
-const toParty = (kind: ClaimParty['kind'], label: string, nctIds: string[], e: EffectOut): ClaimParty => ({
-  kind, label, nctIds,
+const toParty = (kind: ClaimParty['kind'], label: string, nctIds: string[], e: EffectOut, unit: string | null = null): ClaimParty => ({
+  kind, label, nctIds, unit: e.measure === 'MD' ? unit : null,
   effect: { measure: e.measure as ClaimParty['effect']['measure'], value: e.value, ciLow: e.ciLow, ciHigh: e.ciHigh, ciLevel: e.ciLevel },
 });
 
@@ -352,8 +352,8 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
       const claim: Claim = {
         type: r.type,
         endpoint: node?.label ?? a.endpointNodeId!,
-        a: toParty('TRIAL_RESULT', `${trialLabel(trials.get(a.nctId), a.nctId)}, ${a.experimentalLabel} vs ${a.comparatorLabel}`, [a.nctId], r.a),
-        b: toParty('TRIAL_RESULT', `${trialLabel(trials.get(b.nctId), b.nctId)}, ${b.experimentalLabel} vs ${b.comparatorLabel}`, [b.nctId], r.b),
+        a: toParty('TRIAL_RESULT', `${trialLabel(trials.get(a.nctId), a.nctId)}, ${a.experimentalLabel} vs ${a.comparatorLabel}`, [a.nctId], r.a, a.units),
+        b: toParty('TRIAL_RESULT', `${trialLabel(trials.get(b.nctId), b.nctId)}, ${b.experimentalLabel} vs ${b.comparatorLabel}`, [b.nctId], r.b, b.units),
         conditions: pairConditions(e, a, b),
         discriminatingVariable: toDiscriminator(r.discriminator),
       };
@@ -417,8 +417,8 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
       const claim: Claim = {
         type: f.type,
         endpoint: node?.label ?? c.endpointNodeId,
-        a: toParty(f.type === 'C5' ? 'POOLED_RESULT' : 'TRIAL_RESULT', f.aLabel, f.aNctIds, f.a),
-        b: toParty(f.type === 'C5' ? 'POOLED_RESULT' : 'TRIAL_RESULT', f.bLabel, f.bNctIds, f.b),
+        a: toParty(f.type === 'C5' ? 'POOLED_RESULT' : 'TRIAL_RESULT', f.aLabel, f.aNctIds, f.a, first.units),
+        b: toParty(f.type === 'C5' ? 'POOLED_RESULT' : 'TRIAL_RESULT', f.bLabel, f.bNctIds, f.b, first.units),
         conditions: [
           { dimension: 'endpoint', statement: `same endpoint (${node?.label ?? c.endpointNodeId})` },
           { dimension: 'intervention', statement: `same agent (${agentLabel(first.agents)})` },
