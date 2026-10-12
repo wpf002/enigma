@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { typeName } from '@/lib/labels';
 import type { GateStatus } from '@/lib/types';
 import { IconCheck, IconChevron, IconDash, IconHalf, IconX } from './icons';
 
@@ -50,14 +51,9 @@ export function Count({ children }: { children: ReactNode }) {
   return <span className="num rounded-full bg-sunken px-2 font-mono text-xs font-medium text-muted" style={{ lineHeight: '20px' }}>{children}</span>;
 }
 
-/** Contradiction type. Identity is the code and the label, never a color. */
-export function TypeBadge({ type, label }: { type: string; label?: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 whitespace-nowrap">
-      <span className="num rounded-sm border border-border-strong px-1 font-mono text-xs font-medium">{type}</span>
-      {label && <span className="text-sm">{label}</span>}
-    </span>
-  );
+/** Contradiction type by its screen name. Identity is the text, never a color. */
+export function TypeBadge({ type }: { type: string }) {
+  return <span className="chip whitespace-nowrap text-text" title={type}>{typeName(type)}</span>;
 }
 
 const STATUS: Record<GateStatus, { label: string; icon: ReactNode; className: string }> = {

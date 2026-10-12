@@ -2,23 +2,20 @@ import Link from 'next/link';
 import { ContradictionTable } from '@/components/ContradictionTable';
 import { DimensionBars } from '@/components/DimensionBars';
 import { IconChevron } from '@/components/icons';
-import { Empty, PageHeader, Section, StatusBadge, TypeBadge } from '@/components/ui';
+import { Empty, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { api } from '@/lib/api';
 import { n, pct } from '@/lib/format';
+import { dimensionName, typeName } from '@/lib/labels';
 import type { Overview } from '@/lib/types';
-
-const TYPE_LABEL: Record<string, string> = {
-  C1: 'Direction Conflict', C2: 'Magnitude Incompatibility', C3: 'Null/Effect Conflict', C4: 'Heterogeneity Anomaly', C5: 'Temporal Reversal',
-};
 
 export default async function OverviewPage() {
   const o = await api<Overview>('/v1/overview');
   const c = o.counts;
   const stages = [
     { label: 'Trials', value: c.trials, sub: `${n(c.terminatedTrials)} Terminated` },
-    { label: 'Effect Records', value: c.effectRecords, sub: `${pct(c.effectRecords ? c.mappedRecords / c.effectRecords : 0)} Mapped` },
-    { label: 'Candidate Pairs', value: c.candidatePairs, sub: `${n(c.apparentConflicts)} Apparent Conflicts` },
-    { label: 'Gate Passes', value: c.passedPairs, sub: `${pct(c.candidatePairs ? c.passedPairs / c.candidatePairs : 0, 1)} Pass Rate` },
+    { label: 'Results', value: c.effectRecords, sub: `${pct(c.effectRecords ? c.mappedRecords / c.effectRecords : 0)} Matched to Endpoints` },
+    { label: 'Pairs Checked', value: c.candidatePairs, sub: `${n(c.apparentConflicts)} Apparent Conflicts` },
+    { label: 'Comparable', value: c.passedPairs, sub: `${pct(c.candidatePairs ? c.passedPairs / c.candidatePairs : 0, 1)} of Pairs` },
     { label: 'Contradictions', value: c.contradictions, sub: `${n(c.clusters)} Clusters`, accent: true },
   ];
   const maxType = Math.max(1, ...Object.values(c.byType));
@@ -60,7 +57,7 @@ export default async function OverviewPage() {
             {Object.entries(c.byType).map(([type, count]) => (
               <Link key={type} href={`/contradictions?type=${type}`} className="row-link grid grid-cols-[minmax(0,1fr)_48px] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
                 <span className="min-w-0">
-                  <TypeBadge type={type} label={TYPE_LABEL[type]} />
+                  <span className="block truncate text-sm">{typeName(type)}</span>
                   <span className="mt-2 block h-1 rounded-full bg-sunken"><span className="block h-1 rounded-full bg-mark" style={{ width: `${(count / maxType) * 100}%` }} /></span>
                 </span>
                 <span className="num text-right font-mono text-sm font-medium">{n(count)}</span>
@@ -71,11 +68,11 @@ export default async function OverviewPage() {
 
         <Section title="Gate Failures" aside={<Link className="link" href="/failures">{n(c.failedPairs)}</Link>}>
           <div className="card p-3">
-            <DimensionBars rows={o.failuresByDimension.map((d) => ({ dimension: d.dimension, label: d.label, value: d.count }))} hrefFor={(d) => `/failures?dimension=${d}&apparent=any`} />
+            <DimensionBars rows={o.failuresByDimension.map((d) => ({ dimension: d.dimension, label: dimensionName(d.dimension, d.label), value: d.count }))} hrefFor={(d) => `/failures?dimension=${d}&apparent=any`} />
           </div>
         </Section>
 
-        <Section title="Exit Gates" aside={<Link className="link" href="/validation">Validation</Link>}>
+        <Section title="Validation" aside={<Link className="link" href="/validation">View All</Link>}>
           <div className="card">
             {o.gates.map((g) => (
               <div key={g.phase} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-3 text-sm last:border-b-0" title={g.measured}>

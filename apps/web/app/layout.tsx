@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { IconBell, IconConflict, IconGate, IconMap, IconOverview, IconShield, IconTimeline } from '@/components/icons';
+import { IconBell, IconChecklist, IconConflict, IconGate, IconMap, IconOverview, IconTimeline, IconWatch } from '@/components/icons';
 import { NavLink } from '@/components/NavLink';
 import { Search } from '@/components/Search';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -59,16 +59,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 <NavLink href="/map" icon={<IconMap />}>Map</NavLink>
                 <NavLink href="/endpoints" icon={<IconTimeline />}>Timeline</NavLink>
                 <NavLink href="/failures" icon={<IconGate />}>Gate Failures</NavLink>
-                <NavLink href="/watchlists" icon={<IconBell />} count={unread}>Watchlists</NavLink>
-                <NavLink href="/validation" icon={<IconShield />}>Validation</NavLink>
+                <NavLink href="/watchlists" icon={<IconWatch />} count={unread}>Watchlists</NavLink>
+                <NavLink href="/validation" icon={<IconChecklist />}>Validation</NavLink>
               </nav>
-              {overview && (
-                <div className="mt-auto hidden rounded-sm border border-border px-3 py-3 lg:block">
-                  <p className="eyebrow">Snapshot</p>
-                  <p className="mt-1 break-all font-mono text-xs">{overview.snapshot.aactVersion}</p>
-                  <p className="num mt-1 text-xs text-muted">{overview.snapshot.studyCount.toLocaleString('en-US')} Trials</p>
-                </div>
-              )}
             </div>
           </aside>
           <div className="min-w-0">

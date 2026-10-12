@@ -20,9 +20,17 @@ export const IconBell = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path 
 export const IconExternal = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M9 3h4v4M13 3L7.5 8.5M11 9.5V13H3V5h3.5" /></svg>;
 
 // navigation
-export const IconOverview = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" /><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" /><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" /><rect x="9" y="9" width="4.5" height="4.5" rx="1" /></svg>;
-export const IconConflict = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2 5.5h6M9.5 10.5H14" /><circle cx="5" cy="5.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="11.5" cy="10.5" r="1.4" fill="currentColor" stroke="none" /></svg>;
-export const IconMap = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M4 4.5l7.5 1.5M4 4.5L6 11.5M11.5 6L6 11.5" /><circle cx="4" cy="4.5" r="1.6" fill="currentColor" stroke="none" /><circle cx="11.5" cy="6" r="1.6" fill="currentColor" stroke="none" /><circle cx="6" cy="11.5" r="1.6" fill="currentColor" stroke="none" /></svg>;
-export const IconTimeline = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2.5 13.5h11M2.5 2.5v11" /><path d="M4.5 10.5l3-3 2 1.5 3.5-4.5" /></svg>;
-export const IconGate = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2.5 3.5h11l-4.2 5v4l-2.6 1v-5z" /></svg>;
-export const IconShield = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M8 2l5 2v3.8c0 3-2.1 5.2-5 6.2-2.9-1-5-3.200-5-6.200V4z" /><path d="M5.8 8l1.600 1.600 2.800-3" /></svg>;
+// Overview: a summary strip over two panels.
+export const IconOverview = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><rect x="2.5" y="2.5" width="11" height="3.5" rx="1" /><rect x="2.5" y="8.5" width="5" height="5" rx="1" /><rect x="10" y="8.5" width="3.5" height="5" rx="1" /></svg>;
+// Contradictions: not equal.
+export const IconConflict = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M3 6h10M3 10h10M10.5 2.5l-5 11" /></svg>;
+// Map: a hub and three linked nodes.
+export const IconMap = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M8 8.5L3.5 4M8 8.5l4.5-4M8 8.5l1.5 4.5" /><circle cx="8" cy="8.5" r="1.8" fill="currentColor" stroke="none" /><circle cx="3.5" cy="4" r="1.5" fill="currentColor" stroke="none" /><circle cx="12.5" cy="4.5" r="1.5" fill="currentColor" stroke="none" /><circle cx="9.5" cy="13" r="1.5" fill="currentColor" stroke="none" /></svg>;
+// Timeline: events along an axis.
+export const IconTimeline = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M1.5 8h13M4.5 8V5M8 8v3M11.5 8V5" /><circle cx="4.5" cy="3.8" r="1.3" fill="currentColor" stroke="none" /><circle cx="8" cy="12.2" r="1.3" fill="currentColor" stroke="none" /><circle cx="11.5" cy="3.8" r="1.3" fill="currentColor" stroke="none" /></svg>;
+// Gate Failures: blocked.
+export const IconGate = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><circle cx="8" cy="8" r="5.5" /><path d="M4.1 4.1l7.8 7.8" /></svg>;
+// Watchlists: an eye.
+export const IconWatch = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" /><circle cx="8" cy="8" r="2" /></svg>;
+// Validation: a checklist.
+export const IconChecklist = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2.5 4.5l1.3 1.3L6 3.5M8.5 4.5h5M2.5 11l1.3 1.3L6 10M8.5 11h5" /></svg>;

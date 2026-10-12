@@ -3,6 +3,7 @@ import { DimensionBars } from '@/components/DimensionBars';
 import { Empty, PageHeader, Pagination, Section, Stat, StatStrip, Tabs, Trial } from '@/components/ui';
 import { api, qs } from '@/lib/api';
 import { followUp, n, pct } from '@/lib/format';
+import { dimensionName } from '@/lib/labels';
 import type { FailureList, RecordCard } from '@/lib/types';
 
 export const metadata = { title: 'Gate Failures' };
@@ -38,7 +39,7 @@ export default async function FailuresPage({ searchParams }: { searchParams: Par
       <StatStrip>
         <Stat label="Failed Pairs" value={n(s.failed)} />
         <Stat label="Apparent Conflicts" value={n(s.apparentDissolved)} sub={`${pct(s.failed ? s.apparentDissolved / s.failed : 0)} of Failed`} />
-        <Stat label="Top Cause" value={<span className="font-sans">{top?.label ?? 'n/a'}</span>} sub={top ? n(top.apparentDissolved) : undefined} />
+        <Stat label="Top Cause" value={<span className="font-sans">{top ? dimensionName(top.dimension, top.label) : 'n/a'}</span>} sub={top ? n(top.apparentDissolved) : undefined} />
       </StatStrip>
 
       <div className="grid gap-x-8 lg:grid-cols-2">
@@ -46,7 +47,7 @@ export default async function FailuresPage({ searchParams }: { searchParams: Par
           <div className="card p-3">
             <DimensionBars
               active={sp.dimension}
-              rows={s.byDimension.map((d) => ({ dimension: d.dimension, label: d.label, value: onlyApparent ? d.apparentDissolved : d.failed }))}
+              rows={s.byDimension.map((d) => ({ dimension: d.dimension, label: dimensionName(d.dimension, d.label), value: onlyApparent ? d.apparentDissolved : d.failed }))}
               hrefFor={(d) => href({ dimension: sp.dimension === d ? undefined : d })}
             />
           </div>
@@ -60,7 +61,7 @@ export default async function FailuresPage({ searchParams }: { searchParams: Par
                   <tr key={`${g.blockKey}-${g.dimension}`} className="row-link">
                     <td className="td font-medium"><Link href={href({ endpoint: g.endpoint.id, dimension: g.dimension })}>{g.intervention}</Link></td>
                     <td className="td">{g.endpoint.label}</td>
-                    <td className="td text-muted">{g.dimensionLabel}</td>
+                    <td className="td text-muted">{dimensionName(g.dimension, g.dimensionLabel)}</td>
                     <td className="td num text-right font-mono">{n(g.pairs)}</td>
                   </tr>
                 ))}
@@ -94,7 +95,7 @@ export default async function FailuresPage({ searchParams }: { searchParams: Par
                       <td className="td">
                         {e.failureReasons.map((r) => (
                           <span key={r.dimension} className="mb-1 block" title={r.text}>
-                            <span className="font-medium">{r.label}</span>
+                            <span className="font-medium">{dimensionName(r.dimension, r.label)}</span>
                             <span className="block text-xs text-muted">{r.text}</span>
                           </span>
                         ))}

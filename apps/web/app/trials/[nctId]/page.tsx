@@ -46,7 +46,7 @@ export default async function TrialPage({ params }: { params: { nctId: string } 
       <StatStrip>
         <Stat label="Enrolled" value={n(t.enrollment)} sub={t.completionDate?.slice(0, 7)} />
         <Stat label="Records" value={n(t.records.length)} sub={`${n(t.unmappedRecords)} Unmapped`} />
-        <Stat label="Gate Passes" value={n(t.gate.passed)} sub={`${n(failed)} Failed`} />
+        <Stat label="Comparable" value={n(t.gate.passed)} sub={`${n(failed)} Failed`} />
         <Stat label="Contradictions" value={n(t.contradictions.length)} />
       </StatStrip>
 
@@ -81,7 +81,7 @@ export default async function TrialPage({ params }: { params: { nctId: string } 
         </Section>
       </div>
 
-      <Section title="Effect Records" aside={<Count>{t.records.length}</Count>}>
+      <Section title="Results" aside={<Count>{t.records.length}</Count>}>
         {t.records.length === 0 ? <Empty title="None Mapped" /> : (
           <div className="card overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse">

@@ -6,6 +6,7 @@ import { Provenance } from '@/components/Provenance';
 import { Count, Crumbs, Meter, PageHeader, Section, Stat, StatStrip, Trial, TypeBadge } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { followUp, isRatio, n, pct, phase, pValue, score, splitLabel, titleCase } from '@/lib/format';
+import { dimensionName, variableName } from '@/lib/labels';
 import type { ContradictionDetail } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
@@ -51,7 +52,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
         title={c.endpoint.label}
         badges={
           <>
-            <TypeBadge type={c.type} label={c.typeLabel} />
+            <TypeBadge type={c.type} />
             {c.agents.map((a) => <Link key={a.id} className="chip" href={`/contradictions?agent=${a.id}`}>{a.label}</Link>)}
           </>
         }
@@ -91,7 +92,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
       <p className="mb-8 border-l-2 border-accent px-4 text-sm text-muted">{c.brief}</p>
 
       <StatStrip>
-        <Stat label="Diagnostic Value" value={score(d.diagnosticValue.value)} sub={`Rank ${c.rank}`} />
+        <Stat label="Score" value={score(d.diagnosticValue.value)} sub={`Rank ${c.rank}`} />
         <Stat label="Severity" value={score(d.severity)} />
         <Stat label="Gate Score" value={score(proof.gateScore)} sub={`Threshold ${score(proof.threshold)}`} />
         <Stat
@@ -112,7 +113,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
                 const weakest = dim.dimension === proof.weakestDimension;
                 return (
                   <tr key={dim.dimension}>
-                    <td className="td font-medium">{dim.label}{weakest && <span className="chip chip-accent ml-2">Min</span>}</td>
+                    <td className="td font-medium">{dimensionName(dim.dimension, dim.label)}{weakest && <span className="chip chip-accent ml-2">Min</span>}</td>
                     <td className="td">
                       {dim.score === null ? <span className="text-muted">Cluster</span> : (
                         <div className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-3">
@@ -132,9 +133,9 @@ export default async function DossierPage({ params }: { params: { id: string } }
       </Section>
 
       <div className="grid gap-x-8 lg:grid-cols-2">
-        <Section title="Discriminating Variable" id="variable">
+        <Section title="Key Difference" id="variable">
           <div className="card px-6 py-6">
-            <p className="text-lg font-bold">{dv.basis === 'MEASURED' ? titleCase(dv.name.replace(/,.*$/, '')) : 'Unidentified'}</p>
+            <p className="text-lg font-bold">{dv.basis === 'MEASURED' ? variableName(dv.name) : 'None Found'}</p>
             {dv.basis === 'MEASURED' && (dv.a || dv.b) && (
               <dl className="mt-4 grid grid-cols-2 gap-4">
                 <div><dt className="eyebrow">A</dt><dd className="num mt-1 font-mono">{dv.a ?? 'n/a'}</dd></div>
@@ -146,7 +147,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
           </div>
         </Section>
 
-        <Section title="Diagnostic Value" id="value" aside={<span className="font-mono">{score(d.diagnosticValue.value)}</span>}>
+        <Section title="Score" id="value" aside={<span className="font-mono">{score(d.diagnosticValue.value)}</span>}>
           <div className="card">
             {d.diagnosticValue.components.map((k) => (
               <div key={k.key} className="grid grid-cols-[minmax(0,5fr)_minmax(0,4fr)_64px] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0">
@@ -213,7 +214,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
                 <thead><tr><th className="th">Moderator</th><th className="th text-right">Slope p</th><th className="th text-right">Residual I²</th><th className="th text-right">Q Explained</th></tr></thead>
                 <tbody>
                   {cluster.stats.moderators.map((m) => (
-                    <tr key={m.name}><td className="td">{titleCase(m.name)}</td><td className="td num text-right font-mono">{pValue(m.p)}</td><td className="td num text-right font-mono">{pct(m.residualI2)}</td><td className="td num text-right font-mono">{pct(m.qExplained)}</td></tr>
+                    <tr key={m.name}><td className="td">{variableName(m.name)}</td><td className="td num text-right font-mono">{pValue(m.p)}</td><td className="td num text-right font-mono">{pct(m.residualI2)}</td><td className="td num text-right font-mono">{pct(m.qExplained)}</td></tr>
                   ))}
                 </tbody>
               </table>

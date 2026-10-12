@@ -3,13 +3,12 @@ import { ContradictionTable } from '@/components/ContradictionTable';
 import { Filters } from '@/components/Filters';
 import { Count, Empty, PageHeader, Pagination, Tabs } from '@/components/ui';
 import { api, qs } from '@/lib/api';
+import { TYPES, typeName } from '@/lib/labels';
 import type { ContradictionList, EndpointRow } from '@/lib/types';
 
 export const metadata = { title: 'Contradictions' };
 
 type Params = Record<string, string | undefined>;
-
-const TYPES = ['C1', 'C2', 'C3', 'C4', 'C5'];
 
 export default async function ContradictionsPage({ searchParams }: { searchParams: Params }) {
   const sp = searchParams;
@@ -29,15 +28,15 @@ export default async function ContradictionsPage({ searchParams }: { searchParam
         <Tabs
           items={[
             { label: 'All', href: href({ type: undefined }), active: !sp.type, count: all },
-            ...TYPES.map((t) => ({ label: <span className="font-mono">{t}</span>, href: href({ type: t }), active: sp.type === t, count: list.facets.type[t] ?? 0 })),
+            ...TYPES.map((t) => ({ label: typeName(t), href: href({ type: t }), active: sp.type === t, count: list.facets.type[t] ?? 0 })),
           ]}
         />
         <Filters
           search={{ name: 'q', placeholder: 'Search' }}
           selects={[
             { name: 'endpoint', label: 'Endpoint', options: [{ value: '', label: 'All Endpoints' }, ...endpoints.filter((e) => e.contradictions > 0).map((e) => ({ value: e.id, label: e.label }))] },
-            { name: 'discriminator', label: 'Variable', options: [{ value: '', label: 'Any Variable' }, { value: 'named', label: 'Named' }, { value: 'unidentified', label: 'Unidentified' }] },
-            { name: 'sort', label: 'Sort', options: [{ value: '', label: 'By Value' }, { value: 'severity', label: 'By Severity' }, { value: 'gate', label: 'By Gate Score' }] },
+            { name: 'discriminator', label: 'Key Difference', options: [{ value: '', label: 'Any Difference' }, { value: 'named', label: 'Found' }, { value: 'unidentified', label: 'None Found' }] },
+            { name: 'sort', label: 'Sort', options: [{ value: '', label: 'By Score' }, { value: 'severity', label: 'By Severity' }, { value: 'gate', label: 'By Gate Score' }] },
           ]}
         />
       </div>
