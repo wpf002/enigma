@@ -24,43 +24,43 @@ export async function phaseGates(snapshotId: string, source: string): Promise<Ph
   const dossier = latest('dossier');
 
   const reviews: Stats[] = (gateEval?.results ?? []).filter((r: Stats) => r.evaluated);
-  const recovered = reviews.map((r) => `${r.review}: ${r.recoveredStrict}/${r.includedPairsPossible} strict, ${r.recoveredAtReviewPooling}/${r.includedPairsPossible} at the review's pooling level`).join('; ');
+  const recovered = reviews.map((r) => `${r.review}: ${r.recoveredStrict}/${r.includedPairsPossible} strict, ${r.recoveredAtReviewPooling}/${r.includedPairsPossible} pooled`).join('. ');
 
   return [
     {
-      phase: 0, name: 'Bootstrap and ingestion', criterion: 'Full AACT restore reproducible from a cold start in one command',
+      phase: 0, name: 'Ingestion', criterion: 'AACT restore from cold start in one command',
       status: source === 'AACT_DUMP' ? 'MET' : 'PARTIAL',
-      measured: source === 'AACT_DUMP' ? 'Cold start run against a CTTI dump.' : '`pnpm cold-start --subset` reproduces the same snapshot checksum from empty volumes. Not yet run against a CTTI dump.',
+      measured: source === 'AACT_DUMP' ? 'Run against a CTTI dump.' : 'Subset cold start reproduces the checksum. No CTTI dump run.',
     },
     {
-      phase: 1, name: 'Effect normalization', criterion: '>= 95% of results-posted trials yield a valid EffectRecord; conversions round-trip on a 500-record fixture',
+      phase: 1, name: 'Normalization', criterion: '95% of trials yield an effect record. Conversions round-trip.',
       status: normalize ? ((normalize.gate?.yieldAllTrials ?? 0) >= 0.95 ? 'MET' : 'NOT_MET') : 'NOT_RUN',
-      measured: normalize ? `${pct(normalize.gate?.yieldAllTrials)} of all trials, ${pct(normalize.gate?.yieldParallelTrials)} of parallel multi-arm trials. Round-trip fixture passes in the engine test suite.` : 'normalize has not run',
+      measured: normalize ? `${pct(normalize.gate?.yieldAllTrials)} of trials, ${pct(normalize.gate?.yieldParallelTrials)} of parallel trials. Round-trip passes.` : 'Not run.',
     },
     {
-      phase: 2, name: 'Harmonization ontology', criterion: 'Clinician audit of 200 decisions at >= 90% agreement',
+      phase: 2, name: 'Harmonization', criterion: 'Clinician audit of 200 decisions at 90% agreement',
       status: 'NOT_RUN',
-      measured: harmonize ? `No clinician has reviewed the rules. ${pct(harmonize.gate?.endpointMappedShare)} of records map to an endpoint node. Audit sample: \`pnpm ingest audit-sample\`.` : 'harmonize has not run',
+      measured: harmonize ? `No clinician review. ${pct(harmonize.gate?.endpointMappedShare)} of records mapped.` : 'Not run.',
     },
     {
-      phase: 3, name: 'Comparability gate', criterion: 'Recover >= 85% of a review\'s included pairs, reject >= 90% of excluded ones',
+      phase: 3, name: 'Comparability Gate', criterion: 'Recover 85% of a review\'s included pairs. Reject 90% of excluded.',
       status: gateEval ? (reviews.length > 0 && reviews.every((r) => r.recoveryStrict >= 0.85 && r.excluded?.evaluated && r.excluded.rejectionRate >= 0.9) ? 'MET' : 'NOT_MET') : 'NOT_RUN',
-      measured: gateEval ? `${recovered || 'no review evaluated'}. No fixture lists excluded studies, so rejection is not evaluated.` : 'gate-eval has not run',
+      measured: gateEval ? `${recovered || 'No review evaluated'}. Rejection not evaluated.` : 'Not run.',
     },
     {
-      phase: 4, name: 'Contradiction engine', criterion: 'Surface >= 12 of 20 documented controversies without seeding',
+      phase: 4, name: 'Contradiction Engine', criterion: 'Surface 12 of 20 documented controversies',
       status: controversy ? (controversy.summary?.met ? 'MET' : 'NOT_MET') : 'NOT_RUN',
-      measured: controversy ? `${controversy.summary.surfaced} of ${controversy.summary.listed} listed controversies surfaced. The gate calls for 20; ${controversy.summary.listed} are listed.` : 'controversy-eval has not run',
+      measured: controversy ? `${controversy.summary.surfaced} of ${controversy.summary.listed} listed surfaced. 20 required.` : 'Not run.',
     },
     {
-      phase: 5, name: 'Ranking and dossiers', criterion: 'A domain expert rates >= 4 of 5 dossiers "would investigate"',
+      phase: 5, name: 'Dossiers', criterion: 'Expert rates 4 of 5 "would investigate"',
       status: 'NOT_RUN',
-      measured: dossier ? `${dossier.dossiers} dossiers generated. No expert has read them. Export: \`pnpm ingest export-dossiers\`.` : 'dossier has not run',
+      measured: dossier ? `${dossier.dossiers} dossiers. No expert read.` : 'Not run.',
     },
     {
-      phase: 6, name: 'Web surface', criterion: 'Search to dossier in under 60 seconds',
+      phase: 6, name: 'Web', criterion: 'Search to dossier in under 60 seconds',
       status: 'NOT_RUN',
-      measured: 'Not timed with a user. Search and dossier endpoints respond in well under a second on the local corpus.',
+      measured: 'Not timed with a user.',
     },
   ];
 }

@@ -15,7 +15,7 @@ export interface TherapeuticArea {
 export const AREAS: Record<string, TherapeuticArea> = {
   't2d-cv': {
     id: 't2d-cv',
-    label: 'Type 2 diabetes — cardiovascular outcomes',
+    label: 'Type 2 Diabetes Cardiovascular Outcomes',
     conditionQuery: 'type 2 diabetes',
     meshTerms: ['diabetes mellitus, type 2'],
     conditionPatterns: ['type 2 diabet', 'type2 diabet', 'type2diabet', 'type ii diabet', 'diabetes mellitus, type 2', 't2dm'],

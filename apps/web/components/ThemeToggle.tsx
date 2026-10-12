@@ -19,10 +19,10 @@ export function ThemeToggle() {
       // storage unavailable: the choice lasts for this page only
     }
   };
+  const label = dark ? 'Light Theme' : 'Dark Theme';
   return (
-    <button type="button" onClick={toggle} className="btn w-full justify-start border-transparent bg-transparent text-muted" aria-label="Switch color theme">
+    <button type="button" onClick={toggle} className="btn border-transparent bg-transparent px-2 text-muted" aria-label={label} title={label}>
       {dark ? <IconSun /> : <IconMoon />}
-      <span>{dark === null ? 'Theme' : dark ? 'Light theme' : 'Dark theme'}</span>
     </button>
   );
 }

@@ -11,6 +11,7 @@ const log = createLogger('gate');
 
 const RECORD_FIELDS = {
   id: true, nctId: true, endpointNodeId: true, measure: true, sourceKind: true, outcomeType: true,
+  outcomeMeasureId: true, analysisId: true, classification: true,
   value: true, ciLow: true, ciHigh: true, se: true, nAnalyzed: true, controlRisk: true, pooledSd: true, units: true,
   lowerIsBetter: true, directionResolved: true, experimentalLabel: true, comparatorLabel: true,
   agents: true, agentClass: true, doseDaily: true, doseUnit: true, comparatorClass: true, comparatorAgents: true,
@@ -71,6 +72,13 @@ export const toEngineRecord = (r: Rec) => ({
   analysisPopulation: r.analysisPopulation,
 });
 
+/**
+ * Content-based key. Row ids change on every rebuild and Postgres returns rows in no fixed order,
+ * so every ordering and tie-break in blocking uses this key. Same snapshot and rules, same edges.
+ */
+export const stableKey = (r: Pick<Rec, 'nctId' | 'outcomeMeasureId' | 'analysisId' | 'classification' | 'experimentalLabel' | 'comparatorLabel'>): string =>
+  `${r.nctId}|${r.outcomeMeasureId}|${r.analysisId ?? ''}|${r.classification ?? ''}|${r.experimentalLabel}|${r.comparatorLabel}`;
+
 function lexLess(x: number[], y: number[]): boolean {
   for (let i = 0; i < x.length; i += 1) if (x[i] !== y[i]) return x[i]! < y[i]!;
   return false;
@@ -83,6 +91,7 @@ function lexLess(x: number[], y: number[]): boolean {
 function alignedPair(a: Series, b: Series): [Rec, Rec] {
   let best: [Rec, Rec] | null = null;
   let bestKey: number[] = [];
+  let bestTie = '';
   for (const x of a.records) {
     for (const y of b.records) {
       const gap = x.timepointDays && y.timepointDays ? Math.abs(x.timepointDays - y.timepointDays) : 1e9;
@@ -93,9 +102,11 @@ function alignedPair(a: Series, b: Series): [Rec, Rec] {
         (x.outcomeType === 'PRIMARY' ? 0 : 1) + (y.outcomeType === 'PRIMARY' ? 0 : 1),
         -Math.max(x.timepointDays ?? 0, y.timepointDays ?? 0),
       ];
-      if (!best || lexLess(key, bestKey)) {
+      const tie = `${stableKey(x)}::${stableKey(y)}`;
+      if (!best || lexLess(key, bestKey) || (!lexLess(bestKey, key) && tie < bestTie)) {
         best = [x, y];
         bestKey = key;
+        bestTie = tie;
       }
     }
   }
@@ -114,6 +125,7 @@ export async function runGate(config: EnigmaConfig, snapshotId: string): Promise
     select: RECORD_FIELDS,
   });
   if (records.length === 0) throw new Error('no harmonized records: run `pnpm ingest harmonize` first');
+  records.sort((x, y) => (stableKey(x) < stableKey(y) ? -1 : stableKey(x) > stableKey(y) ? 1 : 0));
   const trials = await db.trial.findMany({ where: { snapshotId }, select: { nctId: true, population: true } });
   const populations = new Map(trials.map((t) => [t.nctId, t.population]));
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { IconBell, IconConflict, IconGate, IconMap, IconOverview, IconShield, IconTimeline } from '@/components/icons';
 import { NavLink } from '@/components/NavLink';
 import { Search } from '@/components/Search';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -23,48 +24,68 @@ export const metadata: Metadata = {
 // Applies the stored theme before first paint.
 const THEME_SCRIPT = `try{var t=localStorage.getItem('enigma-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`;
 
+/** Two intervals that do not overlap. */
+function Mark() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden className="text-accent">
+      <rect width="24" height="24" rx="6" fill="currentColor" />
+      <path d="M5 9h8M11 15h8" stroke="var(--accent-fg)" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="9" cy="9" r="2" fill="var(--accent-fg)" />
+      <circle cx="15" cy="15" r="2" fill="var(--accent-fg)" />
+    </svg>
+  );
+}
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const overview = await api<Overview>('/v1/overview').catch(() => null);
+  const unread = overview?.counts.unreadAlerts ?? 0;
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body>
-        <a href="#main" className="btn sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50">Skip to content</a>
-        <div className="lg:grid lg:min-h-screen lg:grid-cols-[256px_minmax(0,1fr)]">
+        <a href="#main" className="btn sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50">Skip to Content</a>
+        <div className="lg:grid lg:min-h-screen lg:grid-cols-[224px_minmax(0,1fr)]">
           <aside className="border-b border-border bg-surface lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-            <div className="flex h-full flex-col gap-6 px-4 py-6">
-              <Link href="/" className="flex items-baseline gap-2 px-3">
-                <span className="text-lg font-bold">Enigma</span>
-                <span className="eyebrow">v1</span>
+            <div className="flex h-full flex-col gap-4 px-3 py-4">
+              <Link href="/" className="flex h-8 items-center gap-3 px-3">
+                <Mark />
+                <span className="text-base font-bold">Enigma</span>
               </Link>
-              <Search />
               <nav className="flex gap-1 overflow-x-auto lg:flex-col" aria-label="Primary">
-                <NavLink href="/">Overview</NavLink>
-                <NavLink href="/contradictions" count={undefined}>Contradictions</NavLink>
-                <NavLink href="/map">Contradiction map</NavLink>
-                <NavLink href="/endpoints">Evidence timeline</NavLink>
-                <NavLink href="/failures">Not comparable</NavLink>
-                <NavLink href="/watchlists" count={overview?.counts.unreadAlerts}>Watchlists</NavLink>
-                <NavLink href="/status">Gates and rules</NavLink>
+                <NavLink href="/" icon={<IconOverview />}>Overview</NavLink>
+                <NavLink href="/contradictions" icon={<IconConflict />}>Contradictions</NavLink>
+                <NavLink href="/map" icon={<IconMap />}>Map</NavLink>
+                <NavLink href="/endpoints" icon={<IconTimeline />}>Timeline</NavLink>
+                <NavLink href="/failures" icon={<IconGate />}>Gate Failures</NavLink>
+                <NavLink href="/watchlists" icon={<IconBell />} count={unread}>Watchlists</NavLink>
+                <NavLink href="/validation" icon={<IconShield />}>Validation</NavLink>
               </nav>
-              <div className="mt-auto hidden flex-col gap-4 lg:flex">
-                {overview && (
-                  <div className="px-3 text-xs text-muted">
-                    <p className="eyebrow mb-1">Snapshot</p>
-                    <p className="break-all font-mono text-text">{overview.snapshot.aactVersion}</p>
-                    <p className="mt-1">{overview.snapshot.source === 'AACT_DUMP' ? 'AACT dump' : 'ClinicalTrials.gov API subset'}</p>
-                    <p className="num">{overview.snapshot.studyCount.toLocaleString('en-US')} trials</p>
-                  </div>
-                )}
-                <ThemeToggle />
-              </div>
+              {overview && (
+                <div className="mt-auto hidden rounded-sm border border-border px-3 py-3 lg:block">
+                  <p className="eyebrow">Snapshot</p>
+                  <p className="mt-1 break-all font-mono text-xs">{overview.snapshot.aactVersion}</p>
+                  <p className="num mt-1 text-xs text-muted">{overview.snapshot.studyCount.toLocaleString('en-US')} Trials</p>
+                </div>
+              )}
             </div>
           </aside>
-          <main id="main" className="min-w-0 px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
-            <div className="mx-auto max-w-page">{children}</div>
-          </main>
+          <div className="min-w-0">
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-bg px-4 sm:px-8 lg:px-12">
+              <Search />
+              <div className="ml-auto flex items-center gap-1">
+                <Link href="/watchlists" className="btn relative border-transparent bg-transparent px-2 text-muted" aria-label={`Alerts, ${unread} Unread`} title="Alerts">
+                  <IconBell />
+                  {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />}
+                </Link>
+                <ThemeToggle />
+              </div>
+            </header>
+            <main id="main" className="px-4 py-8 sm:px-8 lg:px-12">
+              <div className="mx-auto max-w-page">{children}</div>
+            </main>
+          </div>
         </div>
       </body>
     </html>

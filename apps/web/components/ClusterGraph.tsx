@@ -70,7 +70,7 @@ export function ClusterGraph({ cluster }: { cluster: MapCluster }) {
             const box = (svg ?? e.currentTarget).getBoundingClientRect();
             const x = 'clientX' in e ? e.clientX - box.left : ((a.x ?? 0) + (b.x ?? 0)) / 2;
             const y = 'clientY' in e ? e.clientY - box.top : ((a.y ?? 0) + (b.y ?? 0)) / 2;
-            setHover({ x, y, title: hit ? `${hit.type} contradiction, rank ${hit.rank}` : 'Comparable, no contradiction', lines: [`${l.source} and ${l.target}`, `gate score ${l.gateScore.toFixed(2)}`] });
+            setHover({ x, y, title: hit ? `${hit.type} · Rank ${hit.rank}` : 'Comparable', lines: [`${l.source} / ${l.target}`, `Gate ${l.gateScore.toFixed(2)}`] });
           };
           return (
             <g key={`${l.source}-${l.target}`}>
@@ -93,7 +93,7 @@ export function ClusterGraph({ cluster }: { cluster: MapCluster }) {
           const show = () => setHover({
             x: p.x ?? 0, y: (p.y ?? 0) - p.r,
             title: n.label === n.id ? n.id : `${n.label} · ${n.id}`,
-            lines: [n.effect?.text ?? 'no effect on record', n.effect?.arm ?? '', `${terminated ? 'terminated' : 'completed'}${n.completionDate ? ` ${n.completionDate.slice(0, 7)}` : ''}${n.effect?.n ? ` · n ${n.effect.n.toLocaleString('en-US')}` : ''}`].filter(Boolean),
+            lines: [n.effect?.text ?? 'No Effect Record', n.effect?.arm ?? '', `${terminated ? 'Terminated' : 'Completed'}${n.completionDate ? ` ${n.completionDate.slice(0, 7)}` : ''}${n.effect?.n ? ` · N ${n.effect.n.toLocaleString('en-US')}` : ''}`].filter(Boolean),
           });
           return (
             <g key={n.id}>

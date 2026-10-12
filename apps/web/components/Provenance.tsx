@@ -5,7 +5,7 @@ import type { Factor, FactorValue } from '@enigma/provenance';
 import { IconCheck, IconChevron, IconX } from './icons';
 
 const STAGE_LABEL: Record<string, string> = {
-  NORMALIZE: 'Normalize', HARMONIZE: 'Harmonize', GATE: 'Comparability gate', CONTRADICTION: 'Incompatibility test', RANK: 'Ranking',
+  NORMALIZE: 'Normalize', HARMONIZE: 'Harmonize', GATE: 'Gate', CONTRADICTION: 'Test', RANK: 'Rank',
 };
 
 function show(value: FactorValue | undefined): string {
@@ -21,7 +21,7 @@ export function Provenance({ factors }: { factors: Factor[] }) {
   const groups = useMemo(() => {
     const out: { key: string; label: string; factors: Factor[] }[] = [];
     for (const f of factors) {
-      const label = `${STAGE_LABEL[f.stage] ?? f.stage}${f.subject ? ` · result ${f.subject}` : ''}`;
+      const label = `${STAGE_LABEL[f.stage] ?? f.stage}${f.subject ? ` · ${f.subject}` : ''}`;
       const last = out[out.length - 1];
       if (last && last.label === label) last.factors.push(f);
       else out.push({ key: `${label}-${f.seq}`, label, factors: [f] });
@@ -39,15 +39,12 @@ export function Provenance({ factors }: { factors: Factor[] }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-sm text-muted">
-          <span className="num">{factors.length}</span> steps. Every score, rule and threshold, with the values it read.
-        </p>
+      <div className="mb-3 flex justify-end">
         <button type="button" className="btn" onClick={() => setOpen(all ? new Set() : new Set(factors.map((f) => f.seq)))}>
-          {all ? 'Collapse all' : 'Expand all'}
+          {all ? 'Collapse All' : 'Expand All'}
         </button>
       </div>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {groups.map((g) => (
           <div key={g.key}>
             <p className="eyebrow mb-2">{g.label}</p>

@@ -13,11 +13,11 @@ export const CONTRADICTION_TYPES = ['C1', 'C2', 'C3', 'C4', 'C5'] as const;
 export type ContradictionType = (typeof CONTRADICTION_TYPES)[number];
 
 export const CONTRADICTION_LABEL: Record<ContradictionType, string> = {
-  C1: 'Direction conflict',
-  C2: 'Magnitude incompatibility',
-  C3: 'Null / effect conflict',
-  C4: 'Heterogeneity anomaly',
-  C5: 'Temporal reversal',
+  C1: 'Direction Conflict',
+  C2: 'Magnitude Incompatibility',
+  C3: 'Null/Effect Conflict',
+  C4: 'Heterogeneity Anomaly',
+  C5: 'Temporal Reversal',
 };
 
 /** One side of a claim: a single trial result, or a pooled result over named trials. */
@@ -65,7 +65,15 @@ export function renderDiscriminator(d: DiscriminatingVariable): string {
   return `${d.name} (${d.a ?? 'not recorded'} vs ${d.b ?? 'not recorded'})`;
 }
 
-export function renderClaim(claim: Claim): ClaimSentence {
+/**
+ * The only renderer. `brief` names the conditions by count instead of listing them, for screens
+ * that show the conditions as a table next to the sentence. Exports use the full form.
+ */
+export function renderClaim(claim: Claim, form: 'full' | 'brief' = 'full'): ClaimSentence {
+  if (form === 'brief') {
+    return (`${claim.a.label} and ${claim.b.label} cannot both hold for ${claim.endpoint} under the ${claim.conditions.length} gate conditions. ` +
+      `The discriminating variable is ${renderDiscriminator(claim.discriminatingVariable)}.`) as ClaimSentence;
+  }
   const conditions = claim.conditions.map((c) => c.statement).join('; ');
   return (`${party(claim.a)} and ${party(claim.b)} cannot both hold for ${claim.endpoint} under these conditions: ` +
     `${conditions}. The discriminating variable is ${renderDiscriminator(claim.discriminatingVariable)}.`) as ClaimSentence;

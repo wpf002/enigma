@@ -83,6 +83,6 @@ export function renderChain(factors: readonly Factor[]): string[] {
     const inputs = Object.entries(f.inputs).map(([k, v]) => `${k}=${formatValue(v)}`).join(', ');
     const threshold = f.threshold ? ` | threshold ${f.threshold.name} ${f.threshold.op} ${f.threshold.value}` : '';
     const score = f.score === null ? '' : ` | score ${f.score.toFixed(2)}`;
-    return `${String(f.seq).padStart(2, '0')}. [${f.stage}] ${f.name} — ${f.rule}@${f.ruleVersion} | ${inputs}${threshold}${score} | ${f.outcome}: ${f.note}`;
+    return `${String(f.seq).padStart(2, '0')}. [${f.stage}] ${f.name} | ${f.rule}@${f.ruleVersion} | ${inputs}${threshold}${score} | ${f.outcome}: ${f.note}`;
   });
 }

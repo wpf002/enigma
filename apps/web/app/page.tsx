@@ -1,105 +1,92 @@
 import Link from 'next/link';
-import { ContradictionRow } from '@/components/ContradictionRow';
+import { ContradictionTable } from '@/components/ContradictionTable';
 import { DimensionBars } from '@/components/DimensionBars';
-import { IconArrow } from '@/components/icons';
-import { Empty, PageHeader, Section, Stat, StatusBadge, TypeBadge } from '@/components/ui';
+import { IconChevron } from '@/components/icons';
+import { Empty, PageHeader, Section, StatusBadge, TypeBadge } from '@/components/ui';
 import { api } from '@/lib/api';
-import { n, pct, TYPE_BLURB } from '@/lib/format';
+import { n, pct } from '@/lib/format';
 import type { Overview } from '@/lib/types';
 
 const TYPE_LABEL: Record<string, string> = {
-  C1: 'Direction conflict', C2: 'Magnitude incompatibility', C3: 'Null / effect conflict', C4: 'Heterogeneity anomaly', C5: 'Temporal reversal',
+  C1: 'Direction Conflict', C2: 'Magnitude Incompatibility', C3: 'Null/Effect Conflict', C4: 'Heterogeneity Anomaly', C5: 'Temporal Reversal',
 };
 
 export default async function OverviewPage() {
   const o = await api<Overview>('/v1/overview');
   const c = o.counts;
-  const steps = [
-    { label: 'Trials with results', value: c.trials, note: `${n(c.terminatedTrials)} terminated, kept as signal` },
-    { label: 'Effect records', value: c.effectRecords, note: `${n(c.mappedRecords)} mapped to an endpoint` },
-    { label: 'Candidate pairs', value: c.candidatePairs, note: 'after blocking, never all pairs' },
-    { label: 'Passed the gate', value: c.passedPairs, note: `${pct(c.candidatePairs ? c.passedPairs / c.candidatePairs : 0, 1)} of candidates` },
-    { label: 'Contradictions', value: c.contradictions, note: `across ${n(c.clusters)} clusters` },
+  const stages = [
+    { label: 'Trials', value: c.trials, sub: `${n(c.terminatedTrials)} Terminated` },
+    { label: 'Effect Records', value: c.effectRecords, sub: `${pct(c.effectRecords ? c.mappedRecords / c.effectRecords : 0)} Mapped` },
+    { label: 'Candidate Pairs', value: c.candidatePairs, sub: `${n(c.apparentConflicts)} Apparent Conflicts` },
+    { label: 'Gate Passes', value: c.passedPairs, sub: `${pct(c.candidatePairs ? c.passedPairs / c.candidatePairs : 0, 1)} Pass Rate` },
+    { label: 'Contradictions', value: c.contradictions, sub: `${n(c.clusters)} Clusters`, accent: true },
   ];
+  const maxType = Math.max(1, ...Object.values(c.byType));
   return (
     <>
-      <PageHeader eyebrow="Type 2 diabetes · cardiovascular outcomes" title={`${n(c.contradictions)} pairs of results that cannot both hold`}>
-        Each one passed an eight-dimension comparability gate before it was tested. {n(c.apparentConflictsDissolved)} other pairs look
-        contradictory on their headline numbers and were stopped at the gate.
-      </PageHeader>
+      <PageHeader
+        title="Overview"
+        meta="Type 2 Diabetes Cardiovascular Outcomes"
+        badges={
+          <>
+            {o.snapshot.source !== 'AACT_DUMP' && <Link href="/validation" className="chip chip-accent">API Subset</Link>}
+            {o.ruleSet.rulesReviewed < o.ruleSet.rulesTotal && <Link href="/validation" className="chip chip-accent">{o.ruleSet.rulesReviewed}/{o.ruleSet.rulesTotal} Rules Reviewed</Link>}
+          </>
+        }
+      />
 
-      {o.snapshot.source !== 'AACT_DUMP' && (
-        <p className="card mb-12 border-accent px-4 py-3 text-sm">
-          <span className="font-medium">This snapshot is not an AACT dump.</span> It was built from the public ClinicalTrials.gov API into the same
-          tables. The harmonization rules have not been reviewed by a clinician ({o.ruleSet.rulesReviewed} of {o.ruleSet.rulesTotal}).{' '}
-          <Link className="link" href="/status">See gates and rules</Link>.
-        </p>
-      )}
+      <ol className="card mb-12 grid divide-y divide-border lg:grid-cols-5 lg:divide-x lg:divide-y-0" aria-label="Pipeline">
+        {stages.map((s, i) => (
+          <li key={s.label} className="relative px-4 py-4">
+            <p className="eyebrow">{s.label}</p>
+            <p className={`num mt-1 font-mono text-xl font-medium ${s.accent ? 'text-accent' : ''}`}>{n(s.value)}</p>
+            <p className="num mt-1 text-sm text-muted">{s.sub}</p>
+            {i < stages.length - 1 && (
+              <span className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-muted lg:flex">
+                <IconChevron width={12} height={12} />
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
 
-      <section className="mb-16" aria-label="Pipeline">
-        <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-          {steps.map((s, i) => (
-            <li key={s.label} className="relative border-t-2 border-text pt-4">
-              <Stat label={s.label} value={n(s.value)} note={s.note} />
-              {i < steps.length - 1 && <IconArrow className="absolute -right-4 top-4 hidden text-muted lg:block" />}
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <Section title="Highest diagnostic value" aside={<Link className="link" href="/contradictions">All {n(c.contradictions)}</Link>}>
-        {o.top.length === 0 ? (
-          <Empty title="No contradictions in this snapshot">Run the pipeline with `pnpm ingest pipeline`.</Empty>
-        ) : (
-          <div className="card overflow-hidden">{o.top.map((item) => <ContradictionRow key={item.id} c={item} />)}</div>
-        )}
+      <Section title="Top Ranked" aside={<Link className="link" href="/contradictions">View All</Link>}>
+        {o.top.length === 0 ? <Empty title="No Contradictions">Run `pnpm ingest pipeline`.</Empty> : <ContradictionTable items={o.top} />}
       </Section>
 
-      <div className="grid gap-12 lg:grid-cols-2">
-        <Section title="Where the gate stopped pairs" aside={<Link className="link" href="/failures">Not comparable</Link>}>
-          <p className="mb-4 max-w-prose text-sm text-muted">
-            {n(c.failedPairs)} candidate pairs failed. Each bar counts the pairs whose lowest-scoring dimension was that one. The gate score is the
-            minimum across dimensions, never the mean.
-          </p>
-          <div className="card p-4">
-            <DimensionBars rows={o.failuresByDimension.map((d) => ({ dimension: d.dimension, label: d.label, value: d.count }))} hrefFor={(d) => `/failures?dimension=${d}&apparent=any`} />
-          </div>
-        </Section>
-
-        <Section title="By type">
+      <div className="grid gap-x-8 lg:grid-cols-3">
+        <Section title="By Type">
           <div className="card">
             {Object.entries(c.byType).map(([type, count]) => (
-              <Link key={type} href={`/contradictions?type=${type}`} className="row-link grid grid-cols-[minmax(0,1fr)_64px] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0">
-                <div className="min-w-0">
+              <Link key={type} href={`/contradictions?type=${type}`} className="row-link grid grid-cols-[minmax(0,1fr)_48px] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
+                <span className="min-w-0">
                   <TypeBadge type={type} label={TYPE_LABEL[type]} />
-                  <p className="mt-1 text-sm text-muted">{TYPE_BLURB[type]}</p>
-                </div>
-                <span className="num text-right text-lg font-bold">{n(count)}</span>
+                  <span className="mt-2 block h-1 rounded-full bg-sunken"><span className="block h-1 rounded-full bg-mark" style={{ width: `${(count / maxType) * 100}%` }} /></span>
+                </span>
+                <span className="num text-right font-mono text-sm font-medium">{n(count)}</span>
               </Link>
             ))}
           </div>
         </Section>
-      </div>
 
-      <Section title="Roadmap exit gates" aside={<Link className="link" href="/status">Detail</Link>}>
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse">
-            <thead>
-              <tr><th className="th w-12">Phase</th><th className="th">Criterion</th><th className="th w-28">Status</th><th className="th">Measured</th></tr>
-            </thead>
-            <tbody>
-              {o.gates.map((g) => (
-                <tr key={g.phase}>
-                  <td className="td num font-mono">{g.phase}</td>
-                  <td className="td"><span className="font-medium">{g.name}</span><span className="block text-muted">{g.criterion}</span></td>
-                  <td className="td"><StatusBadge status={g.status} /></td>
-                  <td className="td text-muted">{g.measured}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+        <Section title="Gate Failures" aside={<Link className="link" href="/failures">{n(c.failedPairs)}</Link>}>
+          <div className="card p-3">
+            <DimensionBars rows={o.failuresByDimension.map((d) => ({ dimension: d.dimension, label: d.label, value: d.count }))} hrefFor={(d) => `/failures?dimension=${d}&apparent=any`} />
+          </div>
+        </Section>
+
+        <Section title="Exit Gates" aside={<Link className="link" href="/validation">Validation</Link>}>
+          <div className="card">
+            {o.gates.map((g) => (
+              <div key={g.phase} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 py-3 text-sm last:border-b-0" title={g.measured}>
+                <span className="num font-mono text-muted">{g.phase}</span>
+                <span className="truncate">{g.name}</span>
+                <StatusBadge status={g.status} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      </div>
     </>
   );
 }

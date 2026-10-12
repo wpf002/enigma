@@ -43,7 +43,7 @@ export function WatchButton({ kind, value }: { kind: Watchlist['kind']; value: s
         {entry ? <IconCheck /> : <IconBell />}
         {entry === undefined ? 'Watch' : busy ? 'Saving' : entry ? 'Watching' : 'Watch'}
       </button>
-      {failed && <span className="text-sm text-critical" role="alert">Could not save</span>}
+      {failed && <span className="text-sm text-critical" role="alert">Save Failed</span>}
     </span>
   );
 }

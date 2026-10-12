@@ -153,6 +153,9 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
   for (const part of chunk(recordIds, 5000)) {
     for (const r of await db.effectRecord.findMany({ where: { id: { in: part } } })) records.set(r.id, r);
   }
+  // fixed order, independent of row ids and of the order Postgres returns rows in
+  const edgeKey = (e: Edge) => `${recordKey(records.get(e.aId)!)}::${recordKey(records.get(e.bId)!)}`;
+  edges.sort((x, y) => (edgeKey(x) < edgeKey(y) ? -1 : edgeKey(x) > edgeKey(y) ? 1 : 0));
   const trials = new Map((await db.trial.findMany({ where: { snapshotId } })).map((t) => [t.nctId, t]));
   const trialMeta = (nctId: string) => {
     const t = trials.get(nctId);
@@ -205,7 +208,8 @@ export async function runContradict(config: EnigmaConfig, snapshotId: string): P
     // representative record per series: the one used in the most edges
     const members = [...chosen].map((key) => {
       const ranked = [...usage.get(key)!.entries()].sort(
-        (x, y) => y[1] - x[1] || (records.get(y[0])!.nAnalyzed ?? 0) - (records.get(x[0])!.nAnalyzed ?? 0) || x[0].localeCompare(y[0]),
+        (x, y) => y[1] - x[1] || (records.get(y[0])!.nAnalyzed ?? 0) - (records.get(x[0])!.nAnalyzed ?? 0) ||
+          (recordKey(records.get(x[0])!) < recordKey(records.get(y[0])!) ? -1 : 1),
       );
       return records.get(ranked[0]![0])!;
     });

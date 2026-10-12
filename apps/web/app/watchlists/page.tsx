@@ -16,10 +16,7 @@ export default async function WatchlistsPage() {
   for (const c of contradictions.items) for (const a of c.agents) if (!a.id.startsWith('?')) agents.set(a.id, a);
   return (
     <>
-      <PageHeader eyebrow="Alerts on new snapshots" title="Watchlists">
-        Watch an endpoint, an agent or a trial. When a newer AACT snapshot is ingested, Enigma compares it with the previous one and raises an
-        alert for each trial that posted or changed results, and for each contradiction that was not there before.
-      </PageHeader>
+      <PageHeader title="Watchlists" meta="Alerts on New Snapshots" />
       <Watchlists
         endpoints={endpoints.filter((e) => !e.abstract && e.records > 0).map((e) => ({ id: e.id, label: e.label }))}
         agents={[...agents.values()].sort((a, b) => a.label.localeCompare(b.label))}

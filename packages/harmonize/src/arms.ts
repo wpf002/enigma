@@ -6,10 +6,10 @@ export type ComparatorClass = 'PLACEBO' | 'ACTIVE' | 'STANDARD_OF_CARE' | 'NO_TR
 
 export const COMPARATOR_LABEL: Record<ComparatorClass, string> = {
   PLACEBO: 'Placebo',
-  ACTIVE: 'Active control',
-  STANDARD_OF_CARE: 'Standard of care',
-  NO_TREATMENT: 'No treatment',
-  DOSE_COMPARISON: 'Dose comparison',
+  ACTIVE: 'Active Control',
+  STANDARD_OF_CARE: 'Standard of Care',
+  NO_TREATMENT: 'No Treatment',
+  DOSE_COMPARISON: 'Dose Comparison',
 };
 
 /** A result group (ctgov.result_groups row) as posted. */

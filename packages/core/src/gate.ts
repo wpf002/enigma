@@ -6,12 +6,12 @@ export type GateDimension = (typeof GATE_DIMENSIONS)[number];
 
 export const DIMENSION_LABEL: Record<GateDimension, string> = {
   endpoint: 'Endpoint',
-  measure: 'Measure type',
+  measure: 'Measure Type',
   population: 'Population',
   intervention: 'Intervention',
   comparator: 'Comparator',
   timepoint: 'Timepoint',
-  analysisPopulation: 'Analysis population',
+  analysisPopulation: 'Analysis Population',
   direction: 'Direction',
 };
 

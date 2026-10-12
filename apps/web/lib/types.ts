@@ -13,6 +13,7 @@ export interface ContradictionSummary {
   agents: { id: string; label: string }[];
   nctIds: string[];
   sentence: string;
+  brief: string;
   a: Party;
   b: Party;
   diagnosticValue: number;

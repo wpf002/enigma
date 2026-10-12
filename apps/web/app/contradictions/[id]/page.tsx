@@ -1,16 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Forest, type ForestRow } from '@/components/Forest';
-import { IconBack, IconArrow, IconDownload } from '@/components/icons';
+import { IconArrow, IconBack, IconDownload } from '@/components/icons';
 import { Provenance } from '@/components/Provenance';
-import { Crumbs, Meter, PassFail, Section, Stat, Trial, TypeBadge } from '@/components/ui';
+import { Count, Crumbs, Meter, PageHeader, Section, Stat, StatStrip, Trial, TypeBadge } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
-import { followUp, isRatio, n, pct, pValue, score } from '@/lib/format';
+import { followUp, isRatio, n, pct, phase, pValue, score, splitLabel, titleCase } from '@/lib/format';
 import type { ContradictionDetail } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const c = await api<ContradictionDetail>(`/v1/contradictions/${params.id}`).catch(() => null);
-  return { title: c ? `Dossier ${c.rank}: ${c.endpoint.label}` : 'Dossier' };
+  return { title: c ? `Dossier ${c.rank}` : 'Dossier' };
 }
 
 export default async function DossierPage({ params }: { params: { id: string } }) {
@@ -27,90 +27,166 @@ export default async function DossierPage({ params }: { params: { id: string } }
   const pooled = cluster?.stats.pooled ?? null;
   const conflictTrials = new Set(c.nctIds);
   const toNatural = (theta: number) => (isRatio(measure) ? Math.exp(theta) : theta);
+  const digits = isRatio(measure) || (Math.abs(c.a.effect.value) < 10 && Math.abs(c.b.effect.value) < 10) ? 2 : 1;
 
-  const pair: ForestRow[] = [
-    { key: 'a', label: `A  ${c.a.label}`, value: c.a.effect.value, ciLow: c.a.effect.ciLow, ciHigh: c.a.effect.ciHigh, kind: 'accent' },
-    { key: 'b', label: `B  ${c.b.label}`, value: c.b.effect.value, ciLow: c.b.effect.ciLow, ciHigh: c.b.effect.ciHigh, kind: 'accent' },
-  ];
+  const pair: ForestRow[] = [c.a, c.b].map((p, i) => ({
+    key: i === 0 ? 'a' : 'b', label: `${i === 0 ? 'A' : 'B'}  ${splitLabel(p.label)[0]}`, value: p.effect.value, ciLow: p.effect.ciLow, ciHigh: p.effect.ciHigh, kind: 'accent' as const,
+  }));
   const clusterRows: ForestRow[] = cluster && cluster.measure === measure
     ? [
         ...cluster.members.map((m) => ({
-          key: m.recordId, label: m.label === m.nctId ? m.nctId : `${m.label} · ${m.nctId}`, sub: `${m.arm ?? ''}${m.completionDate ? ` · completed ${m.completionDate.slice(0, 7)}` : ''}${m.status === 'TERMINATED' ? ' · terminated' : ''}`,
+          key: m.recordId, label: m.label === m.nctId ? m.nctId : `${m.label} · ${m.nctId}`,
+          sub: [m.arm, m.completionDate?.slice(0, 7), m.status === 'TERMINATED' ? 'Terminated' : null].filter(Boolean).join(' · '),
           value: m.value, ciLow: m.ciLow, ciHigh: m.ciHigh, href: `/trials/${m.nctId}`,
           kind: conflictTrials.has(m.nctId) ? ('accent' as const) : m.status === 'TERMINATED' ? ('hollow' as const) : undefined,
         })),
-        ...(pooled ? [{ key: 'pooled', label: `Pooled, random effects (${pooled.k} trials)`, value: toNatural(pooled.thetaRandom), ciLow: toNatural(pooled.ciLow), ciHigh: toNatural(pooled.ciHigh), kind: 'pooled' as const }] : []),
+        ...(pooled ? [{ key: 'pooled', label: `Pooled (${pooled.k})`, value: toNatural(pooled.thetaRandom), ciLow: toNatural(pooled.ciLow), ciHigh: toNatural(pooled.ciHigh), kind: 'pooled' as const }] : []),
       ]
     : [];
 
   return (
     <article>
       <Crumbs items={[{ label: 'Contradictions', href: '/contradictions' }, { label: `Dossier ${c.rank}` }]} />
+      <PageHeader
+        title={c.endpoint.label}
+        badges={
+          <>
+            <TypeBadge type={c.type} label={c.typeLabel} />
+            {c.agents.map((a) => <Link key={a.id} className="chip" href={`/contradictions?agent=${a.id}`}>{a.label}</Link>)}
+          </>
+        }
+        actions={
+          <>
+            <a className="btn btn-primary" href={`/api/v1/contradictions/${c.id}/dossier.pdf`}><IconDownload />Export PDF</a>
+            <a className="btn" href={`/api/v1/contradictions/${c.id}/dossier.md`}>Markdown</a>
+            {c.prevId ? <Link className="btn px-2" href={`/contradictions/${c.prevId}`} aria-label="Previous Dossier" title="Previous"><IconBack /></Link> : <span className="btn px-2" aria-disabled="true"><IconBack /></span>}
+            {c.nextId ? <Link className="btn px-2" href={`/contradictions/${c.nextId}`} aria-label="Next Dossier" title="Next"><IconArrow /></Link> : <span className="btn px-2" aria-disabled="true"><IconArrow /></span>}
+          </>
+        }
+      />
 
-      <header className="mb-12">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <span className="eyebrow">Dossier {c.rank}</span>
-          <TypeBadge type={c.type} label={c.typeLabel} />
-          {c.agents.map((a) => <Link key={a.id} className="chip" href={`/contradictions?agent=${a.id}`}>{a.label}</Link>)}
+      <section className="card mb-4" aria-label="Results">
+        <div className="grid divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+          {[c.a, c.b].map((p, i) => {
+            const [trial, arm] = splitLabel(p.label);
+            return (
+              <div key={trial + i} className="min-w-0 px-6 py-6">
+                <p className="flex items-center gap-2 text-sm">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent font-mono text-xs font-medium text-accent-fg">{i === 0 ? 'A' : 'B'}</span>
+                  <span className="truncate font-mono">{trial}</span>
+                </p>
+                <p className="num mt-3 font-mono text-xl font-medium">
+                  {p.effect.value.toFixed(digits)}
+                  <span className="ml-2 text-sm font-normal text-muted">{p.effect.measure}{p.unit ? `, ${p.unit}` : ''}</span>
+                </p>
+                <p className="num mt-1 font-mono text-sm text-muted">95% CI {p.effect.ciLow.toFixed(digits)} to {p.effect.ciHigh.toFixed(digits)}</p>
+                {arm && <p className="mt-3 truncate text-sm" title={arm}>{arm}</p>}
+              </div>
+            );
+          })}
         </div>
-        <h1 className="text-xl font-bold">{c.endpoint.label}</h1>
-        <p className="mt-6 max-w-prose text-lg">{d.sentence}</p>
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          <a className="btn btn-primary" href={`/api/v1/contradictions/${c.id}/dossier.pdf`}><IconDownload />PDF</a>
-          <a className="btn" href={`/api/v1/contradictions/${c.id}/dossier.md`}><IconDownload />Markdown</a>
-          <span className="mx-2 hidden h-6 w-px bg-border sm:block" />
-          {c.prevId ? <Link className="btn" href={`/contradictions/${c.prevId}`}><IconBack />Previous</Link> : <span className="btn" aria-disabled="true"><IconBack />Previous</span>}
-          {c.nextId ? <Link className="btn" href={`/contradictions/${c.nextId}`}>Next<IconArrow /></Link> : <span className="btn" aria-disabled="true">Next<IconArrow /></span>}
-        </div>
-      </header>
-
-      <section className="mb-16 grid gap-6 border-y border-border py-6 sm:grid-cols-2 lg:grid-cols-4" aria-label="Summary">
-        <Stat label="Diagnostic value" value={score(d.diagnosticValue.value)} note={`rank ${c.rank}`} />
-        <Stat label="Severity" value={score(d.severity)} note={c.typeLabel} />
-        <Stat label="Gate confidence" value={score(proof.gateScore)} note={`threshold ${score(proof.threshold)}`} />
-        <Stat
-          label="Difference test"
-          value={d.diagnosticValue.zDiff === null ? 'cluster' : `z ${d.diagnosticValue.zDiff.toFixed(2)}`}
-          note={d.diagnosticValue.qDiff === null ? 'heterogeneity across the cluster' : `q ${pValue(d.diagnosticValue.qDiff)} after FDR`}
-        />
+        <div className="border-t border-border px-6 py-4"><Forest rows={pair} measure={measure} unit={c.a.unit} /></div>
       </section>
 
-      <Section title="The two results">
-        <div className="card mb-6 p-6">
-          <Forest rows={pair} measure={measure} unit={c.a.unit} />
+      <p className="mb-8 border-l-2 border-accent px-4 text-sm text-muted">{c.brief}</p>
+
+      <StatStrip>
+        <Stat label="Diagnostic Value" value={score(d.diagnosticValue.value)} sub={`Rank ${c.rank}`} />
+        <Stat label="Severity" value={score(d.severity)} />
+        <Stat label="Gate Score" value={score(proof.gateScore)} sub={`Threshold ${score(proof.threshold)}`} />
+        <Stat
+          label="Difference"
+          value={d.diagnosticValue.zDiff === null ? `I² ${pct(pooled?.i2)}` : `z ${d.diagnosticValue.zDiff.toFixed(2)}`}
+          sub={d.diagnosticValue.qDiff === null ? `${cluster?.k ?? 0} Trials` : `q ${pValue(d.diagnosticValue.qDiff)}`}
+        />
+      </StatStrip>
+
+      <Section title="Comparability Proof" id="proof" aside={<span className="font-mono">min = {score(proof.gateScore)}</span>}>
+        <div className="card overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse">
+            <thead>
+              <tr><th className="th w-48">Dimension</th><th className="th w-48">Score</th><th className="th">Condition</th><th className="th w-64">Rule</th></tr>
+            </thead>
+            <tbody>
+              {proof.dimensions.map((dim) => {
+                const weakest = dim.dimension === proof.weakestDimension;
+                return (
+                  <tr key={dim.dimension}>
+                    <td className="td font-medium">{dim.label}{weakest && <span className="chip chip-accent ml-2">Min</span>}</td>
+                    <td className="td">
+                      {dim.score === null ? <span className="text-muted">Cluster</span> : (
+                        <div className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-3">
+                          <Meter value={dim.score} threshold={proof.threshold} emphasize={weakest} />
+                          <span className="num text-right font-mono">{score(dim.score)}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="td">{dim.statement ? dim.statement.charAt(0).toUpperCase() + dim.statement.slice(1) : ''}</td>
+                    <td className="td font-mono text-xs text-muted">{dim.rule}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+      </Section>
+
+      <div className="grid gap-x-8 lg:grid-cols-2">
+        <Section title="Discriminating Variable" id="variable">
+          <div className="card px-6 py-6">
+            <p className="text-lg font-bold">{dv.basis === 'MEASURED' ? titleCase(dv.name.replace(/,.*$/, '')) : 'Unidentified'}</p>
+            {dv.basis === 'MEASURED' && (dv.a || dv.b) && (
+              <dl className="mt-4 grid grid-cols-2 gap-4">
+                <div><dt className="eyebrow">A</dt><dd className="num mt-1 font-mono">{dv.a ?? 'n/a'}</dd></div>
+                <div><dt className="eyebrow">B</dt><dd className="num mt-1 font-mono">{dv.b ?? 'n/a'}</dd></div>
+              </dl>
+            )}
+            {dv.basis === 'MEASURED' && dv.name.includes(',') && <p className="mt-3 text-sm text-muted">{titleCase(dv.name.replace(/^[^,]*,\s*/, '').replace(/^which accounts for part of the spread/, 'Partial Moderator'))}</p>}
+            {dv.basis !== 'MEASURED' && <p className="mt-2 text-sm text-muted">No recorded covariate differs.</p>}
+          </div>
+        </Section>
+
+        <Section title="Diagnostic Value" id="value" aside={<span className="font-mono">{score(d.diagnosticValue.value)}</span>}>
+          <div className="card">
+            {d.diagnosticValue.components.map((k) => (
+              <div key={k.key} className="grid grid-cols-[minmax(0,5fr)_minmax(0,4fr)_64px] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0">
+                <div className="truncate text-sm">{titleCase(k.label)}<span className="num ml-2 font-mono text-xs text-muted">×{k.weight.toFixed(2)}</span></div>
+                <Meter value={k.value} />
+                <div className="num text-right font-mono text-sm">{k.contribution >= 0 ? '+' : ''}{k.contribution.toFixed(3)}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      </div>
+
+      <Section title="Trials" id="trials">
+        <div className="grid gap-4 lg:grid-cols-2">
           {d.parties.map((p) => (
-            <div key={p.side} className="card p-6">
-              <p className="eyebrow mb-2">Result {p.side}</p>
-              <p className="num text-lg font-bold">{p.effectText}</p>
-              <dl className="mt-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[112px_minmax(0,1fr)]">
-                {p.trials.slice(0, 6).map((t) => (
+            <div key={p.side} className="card px-6 py-6">
+              <p className="eyebrow mb-3">Result {p.side}</p>
+              <dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[96px_minmax(0,1fr)]">
+                {p.trials.slice(0, 4).map((t) => (
                   <div key={t.nctId} className="contents">
                     <dt className="text-muted">Trial</dt>
                     <dd>
                       <Trial nctId={t.nctId} label={t.acronym} />
                       <span className="block">{t.title}</span>
-                      <span className="block text-muted">
-                        {[t.phase, t.enrollment ? `${n(t.enrollment)} enrolled` : null, t.sponsor, t.completionDate ? `completed ${t.completionDate}` : null].filter(Boolean).join(' · ')}
-                      </span>
-                      {t.status === 'TERMINATED' && (
-                        <span className="mt-1 block"><span className="chip chip-accent">Terminated: {(t.stopCategory ?? 'other').toLowerCase()}</span>{t.whyStopped && <span className="ml-2 text-muted">“{t.whyStopped}”</span>}</span>
-                      )}
+                      <span className="block text-muted">{[phase(t.phase), t.enrollment ? `N ${n(t.enrollment)}` : null, t.sponsor, t.completionDate?.slice(0, 7)].filter(Boolean).join(' · ')}</span>
+                      {t.status === 'TERMINATED' && <span className="chip chip-accent mt-1" title={t.whyStopped ?? undefined}>Terminated · {titleCase(t.stopCategory ?? 'Other')}</span>}
                     </dd>
                   </div>
                 ))}
-                {p.trials.length > 6 && <><dt className="text-muted">More</dt><dd className="text-muted">{p.trials.length - 6} further trials in this pooled result</dd></>}
+                {p.trials.length > 4 && <><dt className="text-muted">More</dt><dd className="num text-muted">+{p.trials.length - 4} Trials</dd></>}
                 {p.record && (
                   <>
                     <dt className="text-muted">Outcome</dt>
                     <dd>{p.record.outcomeTitle}{p.record.classification ? ` [${p.record.classification}]` : ''}</dd>
-                    <dt className="text-muted">Comparison</dt>
+                    <dt className="text-muted">Arms</dt>
                     <dd>{p.record.experimentalLabel} vs {p.record.comparatorLabel}</dd>
-                    <dt className="text-muted">Follow-up</dt>
-                    <dd>{followUp(p.record.timepointDays)}{p.record.timeFrame ? <span className="text-muted"> · {p.record.timeFrame}</span> : null}</dd>
+                    <dt className="text-muted">Follow-Up</dt>
+                    <dd className="num">{followUp(p.record.timepointDays)}</dd>
                     <dt className="text-muted">Source</dt>
-                    <dd>{p.record.sourceKind === 'ANALYSIS' ? 'Posted analysis' : 'Computed from posted arm-level data'} · {p.record.analysisPopulation} · n {n(p.record.nAnalyzed)}</dd>
+                    <dd>{p.record.sourceKind === 'ANALYSIS' ? 'Posted Analysis' : 'Arm-Level Data'} · {p.record.analysisPopulation} · N {n(p.record.nAnalyzed)}</dd>
                   </>
                 )}
               </dl>
@@ -119,91 +195,25 @@ export default async function DossierPage({ params }: { params: { id: string } }
         </div>
       </Section>
 
-      <Section title="Comparability proof" aside={<PassFail pass>{`Gate score ${score(proof.gateScore)}, the minimum across dimensions`}</PassFail>}>
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse">
-            <thead>
-              <tr><th className="th w-44">Dimension</th><th className="th w-48">Score</th><th className="th">Condition</th><th className="th w-64">Rule</th></tr>
-            </thead>
-            <tbody>
-              {proof.dimensions.map((dim) => {
-                const weakest = dim.dimension === proof.weakestDimension;
-                return (
-                  <tr key={dim.dimension}>
-                    <td className="td font-medium">{dim.label}{weakest && <span className="chip chip-accent ml-2">minimum</span>}</td>
-                    <td className="td">
-                      {dim.score === null ? <span className="text-muted">cluster level</span> : (
-                        <div className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-3">
-                          <Meter value={dim.score} threshold={proof.threshold} emphasize={weakest} />
-                          <span className="num text-right font-mono">{score(dim.score)}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="td">{dim.statement}</td>
-                    <td className="td font-mono text-xs text-muted">{dim.rule}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-sm text-muted">The vertical tick on each bar is the threshold, {score(proof.threshold)}. One dimension under it would have ended the comparison.</p>
-      </Section>
-
-      <div className="grid gap-12 lg:grid-cols-2">
-        <Section title="Discriminating variable">
-          <div className="card p-6">
-            {dv.basis === 'MEASURED' ? (
-              <>
-                <p className="text-lg font-bold">{dv.name}</p>
-                {(dv.a || dv.b) && (
-                  <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                    <div><dt className="eyebrow">Result A</dt><dd className="num mt-1 text-base">{dv.a ?? 'not recorded'}</dd></div>
-                    <div><dt className="eyebrow">Result B</dt><dd className="num mt-1 text-base">{dv.b ?? 'not recorded'}</dd></div>
-                  </dl>
-                )}
-                <p className="mt-4 text-sm text-muted">The recorded covariate that differs most between the two. It is a candidate, not an established cause.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-lg font-bold">Unidentified</p>
-                <p className="mt-2 text-sm text-muted">No recorded covariate differs between the two results. Whatever separates them is not in the registry record.</p>
-              </>
-            )}
-          </div>
-        </Section>
-
-        <Section title="Diagnostic value">
-          <div className="card">
-            {d.diagnosticValue.components.map((k) => (
-              <div key={k.key} className="grid grid-cols-[minmax(0,5fr)_minmax(0,4fr)_72px] items-center gap-4 border-b border-border px-4 py-3">
-                <div className="text-sm">{k.label}<span className="num ml-2 text-muted">× {k.weight.toFixed(2)}</span></div>
-                <Meter value={k.value} />
-                <div className="num text-right font-mono text-sm">{k.contribution >= 0 ? '+' : ''}{k.contribution.toFixed(3)}</div>
-              </div>
-            ))}
-            <div className="grid grid-cols-[minmax(0,1fr)_72px] items-center gap-4 px-4 py-3">
-              <div className="text-sm font-bold">Total</div>
-              <div className="num text-right font-mono text-sm font-bold">{score(d.diagnosticValue.value)}</div>
-            </div>
-          </div>
-        </Section>
-      </div>
-
       {cluster && (
-        <Section title="Cluster context" aside={<Link className="link" href={`/map?endpoint=${c.endpoint.id}`}>Open in map</Link>}>
-          <p className="mb-4 max-w-prose text-sm text-muted">
-            {cluster.label}. {cluster.k} trials, {n(cluster.nPatients)} participants, linked by gate-pass comparisons.
-            {pooled && ` Heterogeneity I² ${pct(pooled.i2)}, Q ${pooled.q.toFixed(1)} on ${pooled.df} df.`} One arm per trial is shown, which may differ from the arm in the claim.
-          </p>
-          {clusterRows.length > 0 && <div className="card p-6"><Forest rows={clusterRows} measure={measure} unit={c.a.unit} /></div>}
+        <Section
+          title="Cluster"
+          id="cluster"
+          aside={
+            <span className="flex flex-wrap items-center gap-2">
+              <Count>{cluster.k} Trials</Count><Count>N {n(cluster.nPatients)}</Count>{pooled && <Count>I² {pct(pooled.i2)}</Count>}
+              <Link className="link" href={`/map?endpoint=${c.endpoint.id}`}>Map</Link>
+            </span>
+          }
+        >
+          {clusterRows.length > 0 && <div className="card px-6 py-4"><Forest rows={clusterRows} measure={measure} unit={c.a.unit} /></div>}
           {cluster.stats.moderators.length > 0 && (
-            <div className="card mt-6 overflow-x-auto">
+            <div className="card mt-4 overflow-x-auto">
               <table className="w-full min-w-[560px] border-collapse">
-                <thead><tr><th className="th">Moderator tested</th><th className="th text-right">Slope p</th><th className="th text-right">Residual I²</th><th className="th text-right">Q explained</th></tr></thead>
+                <thead><tr><th className="th">Moderator</th><th className="th text-right">Slope p</th><th className="th text-right">Residual I²</th><th className="th text-right">Q Explained</th></tr></thead>
                 <tbody>
                   {cluster.stats.moderators.map((m) => (
-                    <tr key={m.name}><td className="td">{m.name}</td><td className="td num text-right font-mono">{pValue(m.p)}</td><td className="td num text-right font-mono">{pct(m.residualI2)}</td><td className="td num text-right font-mono">{pct(m.qExplained)}</td></tr>
+                    <tr key={m.name}><td className="td">{titleCase(m.name)}</td><td className="td num text-right font-mono">{pValue(m.p)}</td><td className="td num text-right font-mono">{pct(m.residualI2)}</td><td className="td num text-right font-mono">{pct(m.qExplained)}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -212,30 +222,24 @@ export default async function DossierPage({ params }: { params: { id: string } }
         </Section>
       )}
 
-      <Section title="Already resolved?">
-        <div className="card max-w-prose p-6 text-sm">
+      <Section title="Prior Reviews" id="reviews">
+        <div className="card px-6 py-4 text-sm">
           {d.alreadyResolved ? (
             <>
-              <p className="font-medium">{d.alreadyResolved.coverage === 1 ? 'Covered by a published review' : 'Partly covered by a published review'}</p>
-              <p className="mt-2">{d.alreadyResolved.citation}{d.alreadyResolved.pmid ? ` PMID ${d.alreadyResolved.pmid}.` : ''}</p>
-              <p className="mt-2 text-muted">{d.alreadyResolved.conclusion}</p>
-              {d.alreadyResolved.reviewStatus !== 'REVIEWED' && <p className="mt-2 text-muted">This registry entry has not been checked against the source.</p>}
+              <p className="font-medium">{d.alreadyResolved.coverage === 1 ? 'Covered' : 'Partly Covered'}{d.alreadyResolved.reviewStatus !== 'REVIEWED' && <span className="chip ml-2">Unverified Entry</span>}</p>
+              <p className="mt-1 text-muted">{d.alreadyResolved.citation}{d.alreadyResolved.pmid ? ` PMID ${d.alreadyResolved.pmid}.` : ''}</p>
             </>
-          ) : (
-            <p>No review in the registry covers this conflict. The review registry is small, so absence here is not evidence that the conflict is new.</p>
-          )}
+          ) : <p className="text-muted">None in Registry</p>}
         </div>
       </Section>
 
-      <Section title="Provenance chain" id="provenance">
+      <Section title="Provenance" id="provenance" aside={<Count>{c.factors.length} Steps</Count>}>
         <Provenance factors={c.factors} />
       </Section>
 
-      <footer className="border-t border-border pt-6 text-sm text-muted">
-        <p className="max-w-prose">{d.grammarNote}</p>
-        <p className="mt-3 font-mono text-xs">
-          snapshot {d.snapshot.aactVersion} · {d.snapshot.source} · sha256 {d.snapshot.checksum.slice(0, 16)} · rules {d.ruleSet.version} · {d.ruleSet.rulesReviewed}/{d.ruleSet.rulesTotal} clinician-reviewed
-        </p>
+      <footer className="border-t border-border pt-4 text-xs text-muted">
+        <p className="font-mono">{d.snapshot.aactVersion} · sha256 {d.snapshot.checksum.slice(0, 16)} · rules {d.ruleSet.version} · {d.ruleSet.rulesReviewed}/{d.ruleSet.rulesTotal} reviewed</p>
+        <p className="mt-2">{d.grammarNote}</p>
       </footer>
     </article>
   );

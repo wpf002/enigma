@@ -158,7 +158,8 @@ export async function runDossier(_config: EnigmaConfig, snapshotId: string): Pro
         }
       : null;
 
-    const title = `${CONTRADICTION_LABEL[type]}: ${node?.label ?? c.endpointNodeId}`;
+    // The title is the endpoint. The type travels as its own field.
+    const title = node?.label ?? c.endpointNodeId;
     const body = {
       sentence,
       claim,
@@ -185,10 +186,11 @@ export async function runDossier(_config: EnigmaConfig, snapshotId: string): Pro
 
     // ---- Markdown
     const md: string[] = [];
-    md.push(`# Dossier ${c.rank} — ${title}`, '', `> ${sentence}`, '');
+    md.push(`# Dossier ${c.rank}`, '', `> ${sentence}`, '');
     md.push('| | |', '|---|---|');
+    md.push(`| Endpoint | ${title} |`);
     md.push(`| Diagnostic value | ${c.diagnosticValue.toNumber().toFixed(2)} (rank ${c.rank} of ${contradictions.length}) |`);
-    md.push(`| Type | ${type} — ${CONTRADICTION_LABEL[type]} |`);
+    md.push(`| Type | ${type}, ${CONTRADICTION_LABEL[type]} |`);
     md.push(`| Severity | ${c.severity.toNumber().toFixed(2)} |`);
     md.push(`| Gate confidence | ${c.gateConfidence.toNumber().toFixed(2)}${weakest ? ` (weakest dimension: ${DIMENSION_LABEL[weakest as GateDimension]})` : ''} |`);
     md.push(`| Snapshot | ${snapshot.aactVersion} (${snapshot.source}), sha256 ${snapshot.checksum.slice(0, 16)} |`);
@@ -196,11 +198,11 @@ export async function runDossier(_config: EnigmaConfig, snapshotId: string): Pro
 
     md.push('## The two results', '');
     for (const p of parties) {
-      md.push(`### ${p.side} — ${p.label}`, '', `- Effect: **${p.effectText}**`);
+      md.push(`### ${p.side}: ${p.label}`, '', `- Effect: **${p.effectText}**`);
       for (const t of p.trials) {
         const facts = [t.phase, t.status, t.enrollment ? `${t.enrollment} enrolled` : null, t.sponsor, t.completionDate ? `completed ${t.completionDate}` : null].filter(Boolean).join(', ');
         md.push(`- Trial: ${t.title} (${t.nctId}${facts ? `; ${facts}` : ''})`);
-        if (t.status === 'TERMINATED') md.push(`- Terminated: ${t.stopCategory ?? 'OTHER'}${t.whyStopped ? ` — "${t.whyStopped}"` : ''}`);
+        if (t.status === 'TERMINATED') md.push(`- Terminated: ${t.stopCategory ?? 'OTHER'}${t.whyStopped ? `. Registry reason: "${t.whyStopped}"` : ''}`);
       }
       if (p.record) {
         md.push(`- Outcome: ${p.record.outcomeTitle}${p.record.classification ? ` [${p.record.classification}]` : ''}${p.record.timeFrame ? ` (${p.record.timeFrame})` : ''}`);

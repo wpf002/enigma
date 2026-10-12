@@ -35,6 +35,7 @@ export function contradictionSummary(c: ContradictionRow) {
     agents: c.agents.map((id) => ({ id, label: agentLabel(id) })),
     nctIds: c.nctIds,
     sentence: renderClaim(claim),
+    brief: renderClaim(claim, 'brief'),
     a: party(claim.a),
     b: party(claim.b),
     diagnosticValue: num(c.diagnosticValue),

@@ -62,7 +62,7 @@ export function Timeline({ points, cumulative, measure, unit, conflict }: { poin
     };
   }, [dated, cumulative, ratio, width]);
 
-  if (dated.length === 0) return <p className="card px-6 py-12 text-center text-sm text-muted">No dated results for this selection.</p>;
+  if (dated.length === 0) return <p className="px-6 py-8 text-center text-sm text-muted">No Dated Results</p>;
   if (!mounted) return <div ref={ref} style={{ height: HEIGHT }} aria-busy="true" />;
 
   const { x, y, f } = scale;
@@ -105,7 +105,7 @@ export function Timeline({ points, cumulative, measure, unit, conflict }: { poin
           <text key={yr} x={x(`${yr}-01-01`)} y={HEIGHT - 16} textAnchor="middle" fontSize={12} fill="var(--text-muted)" style={{ fontVariantNumeric: 'tabular-nums' }}>{yr}</text>
         ))}
         <line x1={M.left} x2={width - M.right} y1={y(0)} y2={y(0)} stroke="var(--text)" strokeWidth={1} />
-        <text x={width - M.right} y={y(0) - 6} textAnchor="end" fontSize={12} fill="var(--text-muted)">null</text>
+        <text x={width - M.right} y={y(0) - 6} textAnchor="end" fontSize={12} fill="var(--text-muted)">Null</text>
         {band && <path d={band} fill="var(--mark)" fillOpacity={0.1} />}
         {pooledLine.length > 1 && <path d={`M${pooledLine.map((c) => `${x(c.date!)},${y(c.theta)}`).join('L')}`} fill="none" stroke="var(--mark)" strokeWidth={2} strokeLinejoin="round" />}
         {dated.map((p, i) => {
@@ -131,15 +131,15 @@ export function Timeline({ points, cumulative, measure, unit, conflict }: { poin
           <p className="num text-sm font-bold">{active.effect.text}{unit && !ratio ? ` ${unit}` : ''}</p>
           <p className="font-medium">{active.label === active.nctId ? active.nctId : `${active.label} · ${active.nctId}`}</p>
           <p className="truncate text-muted">{active.arm} vs {active.comparator}</p>
-          <p className="num text-muted">{active.status === 'TERMINATED' ? 'terminated' : 'completed'} {active.date?.slice(0, 7)}{active.n ? ` · n ${active.n.toLocaleString('en-US')}` : ''}</p>
-          {inConflict.has(active.nctId) && <p className="mt-1 font-medium">In a contradiction</p>}
+          <p className="num text-muted">{active.status === 'TERMINATED' ? 'Terminated' : 'Completed'} {active.date?.slice(0, 7)}{active.n ? ` · N ${active.n.toLocaleString('en-US')}` : ''}</p>
+          {inConflict.has(active.nctId) && <p className="mt-1 font-medium">In Conflict</p>}
         </div>
       )}
       <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
-        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-mark" />Trial comparison, 95% interval</li>
-        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent" />In a contradiction</li>
-        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full border-2 border-mark" />Terminated trial</li>
-        {pooledLine.length > 1 && <li className="flex items-center gap-2"><span className="h-[2px] w-4 bg-mark" />Cumulative pooled estimate</li>}
+        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-mark" />Trial, 95% CI</li>
+        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent" />In Conflict</li>
+        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full border-2 border-mark" />Terminated</li>
+        {pooledLine.length > 1 && <li className="flex items-center gap-2"><span className="h-[2px] w-4 bg-mark" />Cumulative Pooled</li>}
       </ul>
     </div>
   );

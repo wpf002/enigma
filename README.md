@@ -126,7 +126,7 @@ It does not emit clinical recommendations, treatment guidance, or judgments abou
 
 ## Status
 
-v1 (roadmap Phases 0 to 6) is built. Most exit gates are not met or not run yet. The app reports them live under **Gates and rules**.
+v1 (roadmap Phases 0 to 6) is built. Most exit gates are not met or not run yet. The app reports them live under **Validation**.
 
 | Phase | Exit gate | Status on the first corpus (1,793 type 2 diabetes trials) |
 |---|---|---|

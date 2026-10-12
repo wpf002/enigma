@@ -18,3 +18,11 @@ export const IconSun = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><circle
 export const IconMoon = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M13.5 9.5A5.5 5.5 0 016.5 2.5a5.5 5.5 0 107 7z" /></svg>;
 export const IconBell = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M4 11V7a4 4 0 018 0v4l1.2 1.5H2.8L4 11zM6.5 14h3" /></svg>;
 export const IconExternal = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M9 3h4v4M13 3L7.5 8.5M11 9.5V13H3V5h3.5" /></svg>;
+
+// navigation
+export const IconOverview = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" /><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" /><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" /><rect x="9" y="9" width="4.5" height="4.5" rx="1" /></svg>;
+export const IconConflict = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2 5.5h6M9.5 10.5H14" /><circle cx="5" cy="5.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="11.5" cy="10.5" r="1.4" fill="currentColor" stroke="none" /></svg>;
+export const IconMap = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M4 4.5l7.5 1.5M4 4.5L6 11.5M11.5 6L6 11.5" /><circle cx="4" cy="4.5" r="1.6" fill="currentColor" stroke="none" /><circle cx="11.5" cy="6" r="1.6" fill="currentColor" stroke="none" /><circle cx="6" cy="11.5" r="1.6" fill="currentColor" stroke="none" /></svg>;
+export const IconTimeline = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2.5 13.5h11M2.5 2.5v11" /><path d="M4.5 10.5l3-3 2 1.5 3.5-4.5" /></svg>;
+export const IconGate = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M2.5 3.5h11l-4.2 5v4l-2.6 1v-5z" /></svg>;
+export const IconShield = (p: SVGProps<SVGSVGElement>) => <svg {...base(p)}><path d="M8 2l5 2v3.8c0 3-2.1 5.2-5 6.2-2.9-1-5-3.200-5-6.200V4z" /><path d="M5.8 8l1.600 1.600 2.800-3" /></svg>;

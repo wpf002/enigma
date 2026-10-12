@@ -12,8 +12,8 @@ function flatten(r: SearchResponse): Hit[] {
   return [
     ...r.contradictions.map((c) => ({ key: `c${c.id}`, group: 'Contradictions', label: `${c.type} · ${c.endpoint.label}`, sub: `${c.a.label} / ${c.b.label}`, href: `/contradictions/${c.id}` })),
     ...r.trials.map((t) => ({ key: `t${t.nctId}`, group: 'Trials', label: t.acronym ? `${t.acronym} · ${t.nctId}` : t.nctId, sub: t.title, href: `/trials/${t.nctId}` })),
-    ...r.endpoints.map((e) => ({ key: `e${e.id}`, group: 'Endpoints', label: e.label, sub: 'Evidence timeline', href: `/endpoints/${e.id}` })),
-    ...r.agents.map((a) => ({ key: `a${a.id}`, group: 'Agents', label: a.label, sub: 'Contradictions for this agent', href: `/contradictions?agent=${a.id}` })),
+    ...r.endpoints.map((e) => ({ key: `e${e.id}`, group: 'Endpoints', label: e.label, sub: 'Timeline', href: `/endpoints/${e.id}` })),
+    ...r.agents.map((a) => ({ key: `a${a.id}`, group: 'Agents', label: a.label, sub: 'Contradictions', href: `/contradictions?agent=${a.id}` })),
   ];
 }
 
@@ -72,7 +72,7 @@ export function Search() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="field flex w-full items-center justify-between gap-2 text-muted">
+      <button type="button" onClick={() => setOpen(true)} className="field flex w-full max-w-md items-center justify-between gap-2 text-muted">
         <span className="flex items-center gap-2">
           <IconSearch />
           Search
@@ -93,16 +93,16 @@ export function Search() {
                   if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
                   if (e.key === 'Enter') go(hits[active]);
                 }}
-                placeholder="Trial, NCT id, agent, endpoint"
+                placeholder="Trial, NCT ID, Agent, Endpoint"
                 aria-label="Search query"
                 className="w-full bg-transparent text-base outline-none placeholder:text-muted"
               />
             </div>
             <div className="max-h-96 overflow-y-auto p-2">
-              {state === 'error' && <p className="px-3 py-4 text-sm text-muted">Search failed. The API did not answer.</p>}
-              {state !== 'error' && query.trim().length < 2 && <p className="px-3 py-4 text-sm text-muted">Type two or more characters.</p>}
-              {state === 'loading' && hits.length === 0 && <p className="px-3 py-4 text-sm text-muted">Searching.</p>}
-              {state === 'idle' && query.trim().length >= 2 && hits.length === 0 && <p className="px-3 py-4 text-sm text-muted">Nothing matches “{query.trim()}”.</p>}
+              {state === 'error' && <p className="px-3 py-4 text-sm text-muted">Search failed.</p>}
+              
+              
+              {state === 'idle' && query.trim().length >= 2 && hits.length === 0 && <p className="px-3 py-4 text-sm text-muted">No Results</p>}
               {hits.map((hit, i) => (
                 <div key={hit.key}>
                   {(i === 0 || hits[i - 1]!.group !== hit.group) && <p className="eyebrow px-3 pb-1 pt-3">{hit.group}</p>}
