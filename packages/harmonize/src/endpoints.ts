@@ -133,6 +133,17 @@ export function endpointPath(id: string): string[] {
   return path;
 }
 
+/**
+ * The block an endpoint is compared within: its highest ancestor that is not an
+ * abstract family root. 3-point and 4-point MACE share the group "mace", so the
+ * gate sees that pair and records why it fails. HbA1c and fasting glucose do not.
+ */
+export function endpointGroup(id: string): string {
+  const path = endpointPath(id);
+  const root = ENDPOINT_BY_ID.get(path[0]!);
+  return root && root.kind === null && path.length > 1 ? path[1]! : path[0]!;
+}
+
 const R = {
   cv: defineRule('ENDPOINT', 'endpoint.cv_components', 'Cardiovascular event outcomes are assigned from the set of components named in the title: CV death, all-cause death, MI, stroke, heart failure hospitalization, unstable angina, revascularization.'),
   pattern: defineRule('ENDPOINT', 'endpoint.title_pattern', 'Outcome title matches the node pattern, the measure kind matches the node kind, and no deeper node matches.'),
@@ -163,13 +174,15 @@ function cvNode(text: string): string | null {
 
   if (has('cvDeath', 'mi', 'stroke')) return size === 3 ? 'mace-3p' : 'mace-4p';
   if (has('allDeath', 'mi', 'stroke')) return size === 3 ? 'mace-acm' : 'mace-4p';
+  if (/expanded (composite )?(cardiovascular|cv|mace)/.test(text) && !/each individual component/.test(text)) return 'mace-4p';
   if (MACE.test(text)) {
     if (/3[- ]?point|3p[- ]?mace|three[- ]point/.test(text)) return 'mace-3p';
     if (/4[- ]?point|4p[- ]?mace|four[- ]point|mace[- ]?plus|expanded mace/.test(text)) return 'mace-4p';
     return 'mace';
   }
   if (size === 2 && has('cvDeath', 'hhf')) return 'hhf-cv-death';
-  if (size === 1) {
+  // A composite that names only one recognized component is not that component.
+  if (size === 1 && !/composite|combined|each individual component|any of the following/.test(text)) {
     if (has('cvDeath')) return 'death-cv';
     if (has('allDeath')) return 'death-all-cause';
     if (has('mi')) return nonfatal ? 'mi-nonfatal' : 'mi';
@@ -218,7 +231,8 @@ export function classifyEndpoint(input: {
   measure: EffectMeasure;
   units: string | null;
 }): EndpointDecision {
-  const title = input.title.toLowerCase();
+  // "Cardiovascular (CV) Death" -> "cardiovascular death": drop bracketed abbreviations before matching.
+  const title = input.title.toLowerCase().replace(/\s*\(([a-z0-9-]{1,10})\)/g, ' ').replace(/\s+/g, ' ');
   const cls = (input.classification ?? '').toLowerCase().trim();
   const kind = kindOf(input.measure);
 
@@ -241,6 +255,9 @@ export function classifyEndpoint(input: {
   if (role === 'UNRECOGNIZED') return { ...base, nodeId: null, rule: R.subgroup, reason: 'CLASSIFICATION_UNRECOGNIZED', matchedOn: cls };
 
   if (kind === 'EVENT') {
+    // A renal composite often lists "renal or CV death" as a component. It is still a renal endpoint.
+    const renal = ENDPOINT_BY_ID.get('renal-composite')!;
+    if (renal.include!.test(title) && !MACE.test(title)) return { ...base, nodeId: renal.id, rule: R.pattern, reason: null, matchedOn: title };
     const cv = cvNode(title);
     if (cv && !/hypoglyc/.test(title)) return { ...base, nodeId: cv, rule: R.cv, reason: null, matchedOn: title };
   }

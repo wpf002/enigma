@@ -82,11 +82,15 @@ function background(text: string): BackgroundTherapy {
   const metformin = on('metformin');
   const su = on('(sulfonylurea|sulphonylurea|glimepiride|glipizide|gliclazide|glyburide)');
   const other = on('(pioglitazone|thiazolidinedione|dpp-?4|sglt-?2|sitagliptin)');
+  const oral = metformin || su || other || /oral (anti-?diabetic|anti-?hyperglyc|hypoglyc(a)?emic|glucose[- ]lowering)|\boads?\b|\boha\b/.test(text);
+  // "Drug naive or treated with oral agents or insulin" admits every line of therapy.
+  const anyLine = /na[iï]ve[^.\n;]{0,60}\bor\b[^.\n;]{0,40}(treated|oral|background|\boads?\b|insulin)|any (background|anti-?diabetic|glucose[- ]lowering) (therapy|treatment)|with or without[^.\n;]{0,60}insulin|insulin[^.\n;]{0,30}(alone or|either alone)/.test(text);
+  if (anyLine || (naive && (insulin || oral)) || (insulin && oral && /\bor\b[^.\n;]{0,80}insulin/.test(text))) return 'UNSPECIFIED';
   if (insulin && !/insulin[- ]na[iï]ve/.test(text)) return 'INSULIN';
   if (metformin && (su || other)) return 'DUAL_ORAL';
-  if (naive && !metformin && !su) return 'NAIVE';
-  if (metformin && !naive) return 'METFORMIN';
-  if (su && !naive) return 'SU';
+  if (naive) return 'NAIVE';
+  if (metformin) return 'METFORMIN';
+  if (su) return 'SU';
   return 'UNSPECIFIED';
 }
 
@@ -111,7 +115,17 @@ function femalePct(rows: Row[]): number | null {
   return female + male > 0 ? Number(((female / (female + male)) * 100).toFixed(1)) : null;
 }
 
-export function encodePopulation(eligibility: Row | undefined, baselineRows: Row[]): PopulationProfile {
+const CV_RISK = new RegExp([
+  'established (clinical )?(cardiovascular|cv|atherosclerotic|vascular|cardiac)',
+  'history of (a )?(myocardial infarction|stroke|coronary|cardiovascular|cv)',
+  'high (cardiovascular|cv) risk', 'high risk (for|of) (a )?(cardiovascular|cv)', '(cardiovascular|cv) risk factors?',
+  'risk factors? (for|of) (cardiovascular|cv)', 'evidence of (cardiovascular|cv|vascular)', 'evidence or history of athero',
+  'coronary artery disease', 'atherosclero', 'peripheral (arter(y|ial)|vascular) disease', 'cerebrovascular disease',
+  'acute coronary syndrome', '\\bacs\\b', 'st-segment elevation', 'presence of cardiovascular disease',
+  'concomitant cardiovascular', '(cardiovascular|cv) event',
+].join('|'));
+
+export function encodePopulation(eligibility: Row | undefined, baselineRows: Row[], conditions: string[] = []): PopulationProfile {
   const text = inclusionText(eligibility?.criteria);
   const [hba1cMin, hba1cMax] = range(text, /hba1c|hb ?a1c|\ba1c\b|glycosylated h(a)?emoglobin|glycated h(a)?emoglobin/, [4.5, 15], '%');
   const [bmiMin, bmiMax] = range(text, /\bbmi\b|body mass index/, [15, 60], '(?:kg ?/ ?m(?:2|²|\\^2))');
@@ -125,10 +139,10 @@ export function encodePopulation(eligibility: Row | undefined, baselineRows: Row
     bmiMin,
     bmiMax,
     background: background(text),
-    cvRisk: /established (cardiovascular|cv|atherosclerotic)|history of (myocardial infarction|stroke|coronary|cardiovascular|cv)|high (cardiovascular|cv) risk|coronary artery disease|atherosclerotic cardiovascular|peripheral arter(y|ial) disease|acute coronary syndrome|cardiovascular disease/.test(text)
-      ? 'ESTABLISHED_OR_HIGH' : 'GENERAL',
+    cvRisk: CV_RISK.test(text) ? 'ESTABLISHED_OR_HIGH' : 'GENERAL',
     renal: /chronic kidney disease|\bckd\b|renal (impairment|insufficiency)|diabetic (nephropathy|kidney disease)|albuminuria|egfr[^.\n;]{0,40}(<|≤|below|less than|between)/.test(text) ? 'CKD' : 'GENERAL',
-    heartFailure: /heart failure/.test(text),
+    // Heart failure is often one of several qualifying conditions. Count it only when the trial is registered for it.
+    heartFailure: conditions.some((c) => /heart failure/.test(c.toLowerCase())),
     baseline: {
       ageMean: baselineMean(baselineRows, /^age/, /year/),
       femalePct: femalePct(baselineRows),

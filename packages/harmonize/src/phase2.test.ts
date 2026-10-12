@@ -26,6 +26,14 @@ describe('classifyEndpoint', () => {
     expect(ep('CV death or hospitalization for heart failure', 'HR').nodeId).toBe('hhf-cv-death');
     expect(ep('Time to first non-fatal myocardial infarction', 'HR').nodeId).toBe('mi-nonfatal');
   });
+  it('reads through bracketed abbreviations and does not mistake a composite for one of its components', () => {
+    expect(ep('Major Adverse Cardiovascular Events (MACE) Composite of Cardiovascular (CV) Death, Non-Fatal Myocardial Infarction (MI), and Non-Fatal Stroke', 'HR').nodeId).toBe('mace-3p');
+    expect(ep('Composite of Cardiovascular (CV) Death Events or Hospitalization for Heart Failure', 'HR').nodeId).toBe('hhf-cv-death');
+    expect(ep('Cardiovascular (CV) Death', 'HR').nodeId).toBe('death-cv');
+    expect(ep('Renal Composite Endpoint: Confirmed Sustained ≥40% Decrease in eGFR, ESRD, Renal or CV Death', 'HR').nodeId).toBe('renal-composite');
+    expect(ep('Time to First Occurrence of an Expanded Composite Cardiovascular Outcome', 'HR').nodeId).toBe('mace-4p');
+    expect(ep('Composite of death and worsening nephropathy', 'HR').nodeId).not.toBe('death-all-cause');
+  });
   it('puts all-cause and cardiovascular mortality under one parent as siblings', () => {
     expect(endpointPath('death-cv').slice(0, -1)).toEqual(endpointPath('death-all-cause').slice(0, -1));
   });
@@ -89,6 +97,12 @@ Exclusion Criteria:
       background: 'METFORMIN', cvRisk: 'ESTABLISHED_OR_HIGH', renal: 'GENERAL',
     });
     expect(p.baseline).toMatchObject({ ageMean: 61, femalePct: 40 });
+  });
+  it('encodes mixed-line populations as unspecified and finds CV risk in outcome-trial wording', () => {
+    const mixed = encodePopulation({ criteria: 'Inclusion: anti-diabetic drug naive or treated with one or more oral anti-diabetic drugs or treated with human NPH insulin. Age at least 50 years and concomitant cardiovascular disease' }, []);
+    expect(mixed).toMatchObject({ background: 'UNSPECIFIED', cvRisk: 'ESTABLISHED_OR_HIGH', heartFailure: false });
+    expect(encodePopulation({ criteria: 'Inclusion: * high risk for cardiovascular events' }, []).cvRisk).toBe('ESTABLISHED_OR_HIGH');
+    expect(encodePopulation({ criteria: 'Inclusion: type 2 diabetes' }, [], ['Heart Failure']).heartFailure).toBe(true);
   });
   it('recognizes treatment-naive and insulin-treated populations', () => {
     expect(encodePopulation({ criteria: 'Inclusion: drug-naive patients managed with diet and exercise alone' }, []).background).toBe('NAIVE');

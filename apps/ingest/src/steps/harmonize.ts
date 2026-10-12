@@ -73,7 +73,11 @@ export async function runHarmonize(_config: EnigmaConfig, snapshotId: string): P
     const trialUpdates: Row[] = [];
     for (const raw of rawStudies) {
       const payload = raw.payload as Row;
-      const profile = encodePopulation((payload.eligibilities as Row[])[0], payload.baseline_measurements as Row[]);
+      const profile = encodePopulation(
+        (payload.eligibilities as Row[])[0],
+        payload.baseline_measurements as Row[],
+        (payload.conditions as Row[]).map((c) => String(c.name ?? '')),
+      );
       const hash = hashOf(populationKey(profile)).slice(0, 16);
       populationHashes.set(raw.nctId, hash);
       inc(stats.background, profile.background);

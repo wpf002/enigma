@@ -1,0 +1,14 @@
+{
+  "id": "nissen-2007-rosiglitazone",
+  "citation": "Nissen SE, Wolski K. Effect of rosiglitazone on the risk of myocardial infarction and death from cardiovascular causes. N Engl J Med. 2007;356(24):2457-2471.",
+  "pmid": "17517853",
+  "year": 2007,
+  "pooling": "AGENT",
+  "agentClasses": [],
+  "agents": ["rosiglitazone"],
+  "endpointNodeIds": ["mi", "mi-nonfatal", "death-cv", "mace", "mace-3p"],
+  "includedNctIds": [],
+  "excludedNctIds": [],
+  "conclusion": "A pooled analysis of rosiglitazone trials reported an increased risk of myocardial infarction. The signal and its later reassessment are a documented controversy.",
+  "reviewStatus": "PENDING_HUMAN_REVIEW"
+}

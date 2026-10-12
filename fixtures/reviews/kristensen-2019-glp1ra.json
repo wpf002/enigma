@@ -1,0 +1,14 @@
+{
+  "id": "kristensen-2019-glp1ra",
+  "citation": "Kristensen SL, Rorth R, Jhund PS, et al. Cardiovascular, mortality, and kidney outcomes with GLP-1 receptor agonists in patients with type 2 diabetes: a systematic review and meta-analysis of cardiovascular outcome trials. Lancet Diabetes Endocrinol. 2019;7(10):776-785.",
+  "pmid": "31422062",
+  "year": 2019,
+  "pooling": "AGENT_CLASS",
+  "agentClasses": ["GLP1RA"],
+  "agents": [],
+  "endpointNodeIds": ["mace", "mace-3p", "mace-4p", "death-cv", "death-all-cause", "mi", "mi-nonfatal", "stroke", "stroke-nonfatal", "hhf", "renal-composite"],
+  "includedNctIds": ["NCT01147250", "NCT01179048", "NCT01720446", "NCT01144338", "NCT02465515", "NCT01394952", "NCT02692716"],
+  "excludedNctIds": [],
+  "conclusion": "Pooled GLP-1 receptor agonist outcome trials show reductions in MACE, cardiovascular and all-cause mortality, heart failure hospitalization and a composite kidney outcome, with between-trial heterogeneity discussed by agent structure and trial population.",
+  "reviewStatus": "PENDING_HUMAN_REVIEW"
+}

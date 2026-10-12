@@ -261,7 +261,12 @@ model ComparabilityEdge {
   weakestDimension String
   dimensionScores Json    // dimension -> score
   failureReasons  Json    // dimension -> reason code
-  factors         Json    // Factor[] provenance chain
+  /// Factor[] chain. Passed edges keep all eight dimensions. Failed edges keep the failed dimensions and the final score.
+  factors         Json
+  /// Measure both records are expressed in for incompatibility tests. Null when the gate failed.
+  commonMeasure   String?
+  /// Headline numbers look contradictory (opposite significant effects or disjoint intervals), judged before the gate.
+  apparentConflict Boolean @default(false)
 
   ruleVersion String
   createdAt   DateTime @default(now())
@@ -269,6 +274,7 @@ model ComparabilityEdge {
   @@unique([aId, bId, ruleVersion])
   @@index([snapshotId, passed, gateScore])
   @@index([snapshotId, weakestDimension])
+  @@index([snapshotId, apparentConflict, passed])
   @@index([aNctId])
   @@index([bNctId])
 }
@@ -355,7 +361,12 @@ model ResolvedReview {
   year            Int
   endpointNodeIds String[]
   agentClasses    String[]
+  agents          String[]
+  /// Included studies. Empty when the review is matched by agent or class only.
   nctIds          String[]
+  excludedNctIds  String[]
+  /// AGENT | AGENT_CLASS: what the review pooled across.
+  pooling         String
   conclusion      String
   /// PENDING_HUMAN_REVIEW | REVIEWED
   reviewStatus    String

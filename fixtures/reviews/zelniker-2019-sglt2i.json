@@ -1,0 +1,14 @@
+{
+  "id": "zelniker-2019-sglt2i",
+  "citation": "Zelniker TA, Wiviott SD, Raz I, et al. SGLT2 inhibitors for primary and secondary prevention of cardiovascular and renal outcomes in type 2 diabetes: a systematic review and meta-analysis of cardiovascular outcome trials. Lancet. 2019;393(10166):31-39.",
+  "pmid": "30424892",
+  "year": 2019,
+  "pooling": "AGENT_CLASS",
+  "agentClasses": ["SGLT2I"],
+  "agents": [],
+  "endpointNodeIds": ["mace", "mace-3p", "hhf-cv-death", "hhf", "death-cv", "death-all-cause", "mi", "stroke", "renal-composite"],
+  "includedNctIds": ["NCT01131676", "NCT01032629", "NCT01989754", "NCT01730534"],
+  "excludedNctIds": [],
+  "conclusion": "Pooled SGLT2 inhibitor outcome trials show a moderate MACE reduction confined to patients with established atherosclerotic cardiovascular disease, and reductions in heart failure hospitalization and renal progression regardless of it.",
+  "reviewStatus": "PENDING_HUMAN_REVIEW"
+}

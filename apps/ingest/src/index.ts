@@ -5,6 +5,8 @@ import { createLogger, loadConfig } from '@enigma/shared';
 import { buildSubset } from './aact/subset.js';
 import { resolveSnapshotId } from './context.js';
 import { runAuditSample } from './steps/auditSample.js';
+import { runGate } from './steps/gate.js';
+import { runGateEval } from './steps/gateEval.js';
 import { runHarmonize } from './steps/harmonize.js';
 import { runNormalize } from './steps/normalize.js';
 import { runSnapshot } from './steps/snapshot.js';
@@ -29,6 +31,12 @@ const commands: Record<string, () => Promise<void>> = {
   },
   harmonize: async () => {
     await runHarmonize(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  gate: async () => {
+    await runGate(loadConfig(), await resolveSnapshotId(flag('snapshot')));
+  },
+  'gate-eval': async () => {
+    await runGateEval(await resolveSnapshotId(flag('snapshot')));
   },
   'audit-sample': async () => {
     await runAuditSample(await resolveSnapshotId(flag('snapshot')));
