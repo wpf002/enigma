@@ -1,0 +1,20 @@
+[project]
+name = "enigma-engine"
+version = "0.0.0"
+description = "Comparability scoring and statistical incompatibility testing"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.31",
+    "pydantic>=2.9",
+    "numpy>=2.1",
+    "scipy>=1.14",
+    "statsmodels>=0.14",
+    "psycopg[binary]>=3.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.ruff]
+line-length = 100

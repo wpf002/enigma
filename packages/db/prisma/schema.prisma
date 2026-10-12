@@ -1,0 +1,99 @@
+// Enigma — schema skeleton.
+// Raw layer is immutable and verbatim. Every downstream layer is derivable.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Frozen AACT snapshot. Every derived record references one.
+model Snapshot {
+  id          String   @id @default(cuid())
+  aactVersion String
+  fetchedAt   DateTime
+  checksum    String
+  createdAt   DateTime @default(now())
+
+  effectRecords EffectRecord[]
+  contradictions Contradiction[]
+
+  @@unique([aactVersion])
+}
+
+/// Normalized effect size. Never a bare float.
+model EffectRecord {
+  id         String   @id @default(cuid())
+  snapshotId String
+  snapshot   Snapshot @relation(fields: [snapshotId], references: [id])
+
+  nctId            String
+  outcomeMeasureId String
+  analysisId       String?
+
+  measure          String   // OR | RR | RD | HR | MD | SMD
+  value            Decimal  @db.Decimal(18, 8)
+  ciLow            Decimal? @db.Decimal(18, 8)
+  ciHigh           Decimal? @db.Decimal(18, 8)
+  ciLevel          Decimal? @db.Decimal(5, 4)
+  pValue           Decimal? @db.Decimal(18, 12)
+  dispersionType   String?
+  nAnalyzed        Int?
+  directionResolved Boolean @default(false)
+  lowerIsBetter    Boolean?
+
+  endpointNodeId   String?
+  populationHash   String?
+  interventionHash String?
+  comparatorHash   String?
+  timepointDays    Int?
+  analysisPopulation String? // ITT | PP | MITT | UNKNOWN
+
+  ruleVersion String
+  createdAt   DateTime @default(now())
+
+  @@index([nctId])
+  @@index([endpointNodeId])
+  @@index([snapshotId, endpointNodeId])
+}
+
+/// Pairwise comparability decision. Failures are records, not nulls.
+model ComparabilityEdge {
+  id        String @id @default(cuid())
+  aId       String
+  bId       String
+
+  gateScore     Decimal @db.Decimal(5, 4) // min across dimensions
+  passed        Boolean
+  failureReasons Json    // dimension -> reason
+  factors       Json     // Factor[] provenance chain
+
+  ruleVersion String
+  createdAt   DateTime @default(now())
+
+  @@unique([aId, bId, ruleVersion])
+  @@index([passed, gateScore])
+}
+
+/// Only emitted for edges that passed the gate.
+model Contradiction {
+  id         String   @id @default(cuid())
+  snapshotId String
+  snapshot   Snapshot @relation(fields: [snapshotId], references: [id])
+
+  edgeId      String
+  type        String  // C1..C5
+  severity    Decimal @db.Decimal(5, 4)
+  diagnosticValue Decimal @db.Decimal(5, 4)
+
+  discriminatingVariable String?
+  alreadyResolvedRef     String?
+  factors                Json    // full Factor[] chain
+
+  createdAt DateTime @default(now())
+
+  @@index([diagnosticValue])
+  @@index([snapshotId, type])
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@enigma/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/sensible": "^5.6.0",
+    "zod": "^3.23.0",
+    "@enigma/db": "workspace:*",
+    "@enigma/core": "workspace:*",
+    "@enigma/shared": "workspace:*"
+  }
+}
