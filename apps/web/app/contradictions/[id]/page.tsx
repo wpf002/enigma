@@ -149,7 +149,7 @@ export default async function DossierPage({ params }: { params: { id: string } }
       </details>
 
       <footer className="border-t border-border pt-4 text-xs text-muted">
-        <p className="font-mono">{d.snapshot.aactVersion} · sha256 {d.snapshot.checksum.slice(0, 16)} · rules {d.ruleSet.version}</p>
+        <p className="font-mono">{d.snapshot.aactVersion} · sha256 {d.snapshot.checksum.slice(0, 16)}</p>
         {d.alreadyResolved && <p className="mt-2">Prior Review: {d.alreadyResolved.citation}</p>}
       </footer>
     </article>
