@@ -45,12 +45,12 @@ export default async function TrialPage({ params }: { params: { nctId: string } 
 
       <StatStrip>
         <Stat label="Enrolled" value={n(t.enrollment)} sub={t.completionDate?.slice(0, 7)} />
-        <Stat label="Records" value={n(t.records.length)} sub={`${n(t.unmappedRecords)} Unmapped`} />
-        <Stat label="Comparable" value={n(t.gate.passed)} sub={`${n(failed)} Failed`} />
+        <Stat label="Results" value={n(t.records.length)} sub={`${n(t.unmappedRecords)} Unmatched`} />
+        <Stat label="Comparable" value={n(t.gate.passed)} sub={`${n(failed)} Not Comparable`} />
         <Stat label="Contradictions" value={n(t.contradictions.length)} />
       </StatStrip>
 
-      <Section title="Contradictions" aside={failed > 0 && <Link className="link" href={`/failures?trial=${t.nctId}&apparent=any`}>Gate Failures</Link>}>
+      <Section title="Contradictions" aside={failed > 0 && <Link className="link" href={`/mismatches?trial=${t.nctId}&apparent=any`}>Mismatches</Link>}>
         {t.contradictions.length === 0 ? <Empty title="None" /> : <ContradictionTable items={t.contradictions.slice(0, 10)} />}
       </Section>
 
@@ -95,7 +95,7 @@ export default async function TrialPage({ params }: { params: { nctId: string } 
                       <td className="td num">{followUp(r.timepointDays)}</td>
                       <td className="td">{titleCase(r.analysisPopulation ?? '')}</td>
                       <td className="td text-muted">{r.sourceKind === 'ANALYSIS' ? 'Posted Analysis' : 'Arm-Level Data'}</td>
-                      <td className="td num text-right font-mono">{r.effect.text}</td>
+                      <td className="td num text-right">{r.effect.text}</td>
                     </tr>
                   ))}
                   {records.length > 12 && <tr><td colSpan={5} className="td num text-muted">+{records.length - 12} More</td></tr>}

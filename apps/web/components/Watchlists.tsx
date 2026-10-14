@@ -8,7 +8,7 @@ import type { Alert, Watchlist } from '@/lib/types';
 import { IconX } from './icons';
 import { Empty } from './ui';
 
-const KIND_LABEL: Record<string, string> = { ENDPOINT: 'Endpoint', AGENT: 'Agent', TRIAL: 'Trial' };
+const KIND_LABEL: Record<string, string> = { ENDPOINT: 'Endpoint', AGENT: 'Drug', TRIAL: 'Trial' };
 const ALERT_LABEL: Record<string, string> = {
   TRIAL_ADDED: 'New Results', TRIAL_CHANGED: 'Results Changed', TRIAL_REMOVED: 'Left Scope', NEW_CONTRADICTION: 'New Contradiction',
 };
@@ -67,78 +67,70 @@ export function Watchlists({ endpoints, agents }: { endpoints: Option[]; agents:
   const unread = alerts?.filter((a) => !a.readAt).length ?? 0;
 
   return (
-    <div className="grid gap-12 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <section>
-        <h2 className="mb-3 text-base font-bold">Watching</h2>
-        <form onSubmit={add} className="card mb-4 grid gap-3 p-4">
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted">Type</span>
-            <select className="field w-full" value={kind} onChange={(e) => setKind(e.target.value as Watchlist['kind'])}>
-              <option value="ENDPOINT">Endpoint</option>
-              <option value="AGENT">Agent</option>
-              <option value="TRIAL">Trial</option>
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted">{KIND_LABEL[kind]}</span>
-            {kind === 'TRIAL' ? (
-              <input className="field w-full font-mono" value={value} onChange={(e) => setValue(e.target.value)} placeholder="NCT01131676" pattern="[Nn][Cc][Tt]\d{8}" title="NCT followed by eight digits" required />
-            ) : (
-              <select className="field w-full" value={value} onChange={(e) => setValue(e.target.value)} required>
-                <option value="">Select</option>
-                {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            )}
-          </label>
-          <button type="submit" className="btn btn-primary justify-center" disabled={busy || !value.trim()}>{busy ? 'Adding' : 'Add'}</button>
-          {error && <p className="text-sm text-critical" role="alert">{error}</p>}
-        </form>
-
-        {lists === null && !error && <div className="card h-24" aria-busy="true" />}
-        {lists?.length === 0 && <Empty title="Nothing Watched" />}
-        {lists && lists.length > 0 && (
-          <ul className="card">
-            {lists.map((w) => (
-              <li key={w.id} className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0">
-                <span className="min-w-0 text-sm">
-                  <span className="eyebrow block">{KIND_LABEL[w.kind]}</span>
-                  <Link className="link block truncate font-medium" href={w.kind === 'ENDPOINT' ? `/endpoints/${w.value}` : w.kind === 'TRIAL' ? `/trials/${w.value}` : `/contradictions?agent=${w.value}`}>{w.label}</Link>
-                </span>
-                <span className="flex items-center gap-3">
-                  {w.unread > 0 && <span className="num rounded-full bg-accent px-2 text-xs font-medium text-accent-fg">{w.unread}</span>}
-                  <button type="button" className="btn border-transparent" onClick={() => remove(w.id)} aria-label={`Remove ${w.label}`} title="Remove"><IconX /></button>
-                </span>
-              </li>
-            ))}
-          </ul>
+    <div className="max-w-page">
+      <form onSubmit={add} className="mb-12 flex flex-wrap items-center gap-2">
+        <select className="field" aria-label="Type" value={kind} onChange={(e) => setKind(e.target.value as Watchlist['kind'])}>
+          <option value="ENDPOINT">Endpoint</option>
+          <option value="AGENT">Drug</option>
+          <option value="TRIAL">Trial</option>
+        </select>
+        {kind === 'TRIAL' ? (
+          <input className="field w-64 font-mono" aria-label="Trial" value={value} onChange={(e) => setValue(e.target.value)} placeholder="NCT01131676" pattern="[Nn][Cc][Tt]\d{8}" title="NCT followed by eight digits" required />
+        ) : (
+          <select className="field w-64 max-w-full" aria-label={KIND_LABEL[kind]} value={value} onChange={(e) => setValue(e.target.value)} required>
+            <option value="">{`Choose ${KIND_LABEL[kind]}`}</option>
+            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
         )}
-      </section>
+        <button type="submit" className="btn btn-primary" disabled={busy || !value.trim()}>{busy ? 'Adding' : 'Watch'}</button>
+        {error && <p className="w-full text-sm text-critical" role="alert">{error}</p>}
+      </form>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-base font-bold">Alerts</h2>
-          {unread > 0 && <button type="button" className="btn" onClick={markRead}>Mark {unread} Read</button>}
-        </div>
-        {alerts === null && !error && <div className="card h-24" aria-busy="true" />}
-        {alerts?.length === 0 && <Empty title="No Alerts">Needs a second snapshot.</Empty>}
-        {alerts && alerts.length > 0 && (
-          <ul className="card">
-            {alerts.map((a) => {
-              const href = a.detail.contradictionId ? `/contradictions/${a.detail.contradictionId}` : a.detail.nctId ? `/trials/${a.detail.nctId}` : '#';
-              return (
-                <li key={a.id} className="border-b border-border px-4 py-3 last:border-b-0">
-                  <p className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <span className={`chip ${a.readAt ? '' : 'chip-accent'}`}>{ALERT_LABEL[a.kind] ?? a.kind}</span>
-                    <span>{a.watchlist.name}</span>
-                    <span className="font-mono">{a.snapshot}</span>
-                  </p>
-                  <Link href={href} className={`link text-sm ${a.readAt ? '' : 'font-medium'}`}>{a.title}</Link>
+      <div className="grid gap-x-8 lg:grid-cols-2">
+        <section className="mb-12 flex min-w-0 flex-col">
+          <h2 className="display mb-3 text-lg">Watching</h2>
+          {lists === null && !error && <div className="card flex-1" aria-busy="true" />}
+          {lists?.length === 0 && <Empty title="Nothing Watched" />}
+          {lists && lists.length > 0 && (
+            <ul className="card flex-1">
+              {lists.map((w) => (
+                <li key={w.id} className="flex items-center justify-between gap-4 border-b border-border px-4 py-2 last:border-b-0">
+                  <span className="min-w-0 text-sm">
+                    <Link className="link truncate font-medium" href={w.kind === 'ENDPOINT' ? `/endpoints/${w.value}` : w.kind === 'TRIAL' ? `/trials/${w.value}` : `/contradictions?agent=${w.value}`}>{w.label}</Link>
+                    <span className="ml-2 text-muted">{KIND_LABEL[w.kind]}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {w.unread > 0 && <span className="num rounded-full bg-accent px-2 text-xs font-medium text-accent-fg">{w.unread}</span>}
+                    <button type="button" className="btn border-transparent bg-transparent px-2 text-muted" onClick={() => remove(w.id)} aria-label={`Remove ${w.label}`} title="Remove"><IconX /></button>
+                  </span>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="mb-12 flex min-w-0 flex-col">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 className="display text-lg">Alerts</h2>
+            {unread > 0 && <button type="button" className="link text-sm" onClick={markRead}>Mark All Read</button>}
+          </div>
+          {alerts === null && !error && <div className="card flex-1" aria-busy="true" />}
+          {alerts?.length === 0 && <Empty title="No Alerts" />}
+          {alerts && alerts.length > 0 && (
+            <ul className="card flex-1">
+              {alerts.map((a) => {
+                const href = a.detail.contradictionId ? `/contradictions/${a.detail.contradictionId}` : a.detail.nctId ? `/trials/${a.detail.nctId}` : '#';
+                return (
+                  <li key={a.id} className="border-b border-border px-4 py-3 last:border-b-0">
+                    <Link href={href} className={`link text-sm ${a.readAt ? '' : 'font-medium'}`}>{a.title}</Link>
+                    <p className="text-xs text-muted">{ALERT_LABEL[a.kind] ?? a.kind} · {a.watchlist.name}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

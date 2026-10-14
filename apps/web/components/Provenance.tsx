@@ -54,13 +54,13 @@ export function Provenance({ factors }: { factors: Factor[] }) {
                 return (
                   <li key={f.seq} className="border-b border-border last:border-b-0">
                     <button type="button" onClick={() => toggle(f.seq)} aria-expanded={isOpen} className="row-link grid w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 text-left">
-                      <span className="num font-mono text-xs text-muted">{String(f.seq).padStart(2, '0')}</span>
+                      <span className="num text-xs text-muted">{String(f.seq).padStart(2, '0')}</span>
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{f.note}</span>
                         <span className="block truncate font-mono text-xs text-muted">{f.rule}@{f.ruleVersion}</span>
                       </span>
                       <span className="flex items-center gap-3">
-                        {f.score !== null && <span className="num font-mono text-sm">{f.score.toFixed(2)}</span>}
+                        {f.score !== null && <span className="num text-sm">{f.score.toFixed(2)}</span>}
                         {f.outcome === 'PASS' && <IconCheck className="text-good" aria-label="pass" />}
                         {f.outcome === 'FAIL' && <IconX className="text-critical" aria-label="flag" />}
                         <IconChevron className={`text-muted transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`} />

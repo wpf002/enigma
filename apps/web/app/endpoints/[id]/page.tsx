@@ -1,84 +1,86 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ContradictionTable } from '@/components/ContradictionTable';
+import { EndpointPicker } from '@/components/EndpointPicker';
 import { Filters } from '@/components/Filters';
 import { Timeline } from '@/components/Timeline';
 import { WatchButton } from '@/components/WatchButton';
-import { Count, Crumbs, Empty, PageHeader, Section, Trial } from '@/components/ui';
+import { Empty, PageHeader, Section, Trial } from '@/components/ui';
 import { api, ApiError, qs } from '@/lib/api';
-import { followUp, n, pct } from '@/lib/format';
-import type { TimelineResponse } from '@/lib/types';
+import { n } from '@/lib/format';
+import { unitSuffix } from '@/lib/labels';
+import type { EndpointRow, TimelineResponse } from '@/lib/types';
+
+const FAMILY: Record<string, string> = {
+  glycemic: 'Glycemic Control', cv: 'Cardiovascular', renal: 'Renal', weight: 'Body Weight', bp: 'Blood Pressure', lipids: 'Lipids', hypoglycemia: 'Hypoglycemia',
+};
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const t = await api<TimelineResponse>(`/v1/endpoints/${params.id}/timeline`).catch(() => null);
-  return { title: t ? t.endpoint.label : 'Timeline' };
+  return { title: t ? `${t.endpoint.label} Timeline` : 'Timeline' };
 }
 
 export default async function EndpointTimelinePage({ params, searchParams }: { params: { id: string }; searchParams: { agent?: string; measure?: string } }) {
-  const t = await api<TimelineResponse>(`/v1/endpoints/${params.id}/timeline${qs({ agent: searchParams.agent, measure: searchParams.measure })}`).catch((err) => {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  });
+  const [t, rows] = await Promise.all([
+    api<TimelineResponse>(`/v1/endpoints/${params.id}/timeline${qs({ agent: searchParams.agent, measure: searchParams.measure })}`).catch((err) => {
+      if (err instanceof ApiError && err.status === 404) notFound();
+      throw err;
+    }),
+    api<EndpointRow[]>('/v1/endpoints'),
+  ]);
   const cluster = t.clusters[0];
   const unit = t.points[0]?.units ?? null;
   const conflict = [...new Set(t.contradictions.flatMap((c) => c.nctIds))];
+  const families = [...new Set(rows.map((r) => r.family))];
+  const groups = families.map((f) => ({
+    label: FAMILY[f] ?? f,
+    options: rows.filter((r) => r.family === f && r.records > 0 && !r.abstract).sort((a, b) => b.records - a.records).map((r) => ({ id: r.id, label: r.label })),
+  })).filter((g) => g.options.length > 0);
+  const sorted = [...t.points].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
 
   return (
     <>
-      <Crumbs items={[{ label: 'Timeline', href: '/endpoints' }, ...t.endpoint.path.slice(0, -1).map((p) => ({ label: p.label })), { label: t.endpoint.label }]} />
-      <PageHeader
-        title={t.endpoint.label}
-        badges={t.endpoint.lowerIsBetter !== null && <span className="chip">{t.endpoint.lowerIsBetter ? 'Lower Is Better' : 'Higher Is Better'}</span>}
-        actions={<WatchButton kind="ENDPOINT" value={t.endpoint.id} />}
-      />
+      <PageHeader title="Timeline" actions={<WatchButton kind="ENDPOINT" value={t.endpoint.id} />} />
+
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <EndpointPicker groups={groups} value={t.endpoint.id} />
+        {t.agents.length > 0 && (
+          <Filters
+            selects={[
+              { name: 'agent', label: 'Drug', options: t.agents.map((a) => ({ value: a.id, label: a.label })) },
+              ...(t.measures.length > 1 ? [{ name: 'measure', label: 'Measure', options: t.measures.map((m) => ({ value: m.id, label: m.id })) }] : []),
+            ]}
+          />
+        )}
+        {cluster && <span className="num ml-auto text-sm text-muted">{cluster.k} Trials · {n(cluster.nPatients)} Patients</span>}
+      </div>
 
       {t.agents.length === 0 ? (
-        <Empty title="No Comparable Records" />
+        <Empty title="No Comparable Results" />
       ) : (
         <>
-          <section className="card mb-12 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <Filters
-                selects={[
-                  { name: 'agent', label: 'Agent', options: t.agents.map((a) => ({ value: a.id, label: `${a.label} (${a.records})` })) },
-                  { name: 'measure', label: 'Measure', options: t.measures.map((m) => ({ value: m.id, label: `${m.id} (${m.records})` })) },
-                ]}
-              />
-              <p className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-mono text-muted">{t.measure}{unit && t.measure === 'MD' ? `, ${unit}` : ''}</span>
-                {cluster?.stats.pooled && <><Count>{cluster.k} Trials</Count><Count>N {n(cluster.nPatients)}</Count><Count>I² {pct(cluster.stats.pooled.i2)}</Count></>}
-              </p>
-            </div>
-            <div className="px-4 py-4">
-              <Timeline points={t.points} cumulative={cluster?.stats.cumulative ?? []} measure={t.measure ?? 'MD'} unit={unit} conflict={conflict} />
-            </div>
+          <section className="card mb-12 min-w-0 px-4 pb-4 pt-6">
+            <Timeline points={t.points} cumulative={cluster?.stats.cumulative ?? []} measure={t.measure ?? 'MD'} unit={unit} conflict={conflict} />
           </section>
 
-          <Section title="Contradictions" aside={<Count>{t.contradictions.length}</Count>}>
-            {t.contradictions.length === 0 ? <Empty title="None" /> : <ContradictionTable items={t.contradictions.slice(0, 8)} />}
-            {t.contradictions.length > 8 && <p className="mt-3 text-sm"><Link className="link" href={`/contradictions?endpoint=${t.endpoint.id}&agent=${t.agent}`}>View All</Link></p>}
-          </Section>
+          {t.contradictions.length > 0 && (
+            <Section title="Contradictions" aside={t.contradictions.length > 5 && <Link className="link" href={`/contradictions?endpoint=${t.endpoint.id}&agent=${t.agent}`}>View All {t.contradictions.length}</Link>}>
+              <ContradictionTable items={t.contradictions.slice(0, 5)} />
+            </Section>
+          )}
 
-          <Section title="Data" aside={<Count>{t.points.length}</Count>}>
-            <div className="card overflow-x-auto">
-              <table className="w-full min-w-[820px] border-collapse">
-                <thead>
-                  <tr><th className="th">Trial</th><th className="th">Arms</th><th className="th w-28">Completed</th><th className="th w-28">Follow-Up</th><th className="th w-24 text-right">N</th><th className="th w-64 text-right">Effect</th></tr>
-                </thead>
-                <tbody>
-                  {t.points.map((p) => (
-                    <tr key={p.recordId}>
-                      <td className="td"><Trial nctId={p.nctId} label={p.label} />{p.status === 'TERMINATED' && <span className="chip ml-2">Terminated</span>}</td>
-                      <td className="td">{p.arm} <span className="text-muted">vs {p.comparator}</span></td>
-                      <td className="td num font-mono">{p.date?.slice(0, 7) ?? 'n/a'}</td>
-                      <td className="td num">{followUp(p.timepointDays)}</td>
-                      <td className="td num text-right font-mono">{n(p.n)}</td>
-                      <td className={`td num text-right font-mono ${conflict.includes(p.nctId) ? 'font-medium text-accent' : ''}`}>{p.effect.text}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <Section title="Trials" aside={<span className="num">{sorted.length}</span>}>
+            <ol className="card">
+              {sorted.map((p) => (
+                <li key={p.recordId} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-baseline gap-4 border-b border-border px-4 py-2 text-sm last:border-b-0 md:grid-cols-[56px_160px_minmax(0,1fr)_96px_auto]">
+                  <span className="num text-muted">{p.date?.slice(0, 4) ?? 'n/a'}</span>
+                  <span className="min-w-0 truncate"><Trial nctId={p.nctId} label={p.label} /></span>
+                  <span className="hidden truncate text-muted md:block">{p.arm} vs {p.comparator}{p.status === 'TERMINATED' ? ' · Terminated' : ''}</span>
+                  <span className="num hidden text-right text-muted md:block">{p.n ? `N ${n(p.n)}` : ''}</span>
+                  <span className={`num text-right ${conflict.includes(p.nctId) ? 'font-medium text-accent' : ''}`}>{p.effect.text}{unit && t.measure === 'MD' ? unitSuffix(unit) : ''}</span>
+                </li>
+              ))}
+            </ol>
           </Section>
         </>
       )}

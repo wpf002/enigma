@@ -17,7 +17,7 @@ export function NavLink({ href, icon, children, count }: { href: string; icon: R
     >
       <span className={active ? 'text-accent' : ''}>{icon}</span>
       <span className="flex-1">{children}</span>
-      {count !== undefined && count > 0 && <span className="num rounded-full bg-accent px-2 font-mono text-xs font-medium text-accent-fg">{count}</span>}
+      {count !== undefined && count > 0 && <span className="num rounded-full bg-accent px-2 text-xs font-medium text-accent-fg">{count}</span>}
     </Link>
   );
 }

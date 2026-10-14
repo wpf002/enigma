@@ -6,8 +6,8 @@ import { isRatio } from '@/lib/format';
 import type { CumulativePoint, TimelinePoint } from '@/lib/types';
 import { useWidth } from './useWidth';
 
-const HEIGHT = 360;
-const M = { top: 16, right: 24, bottom: 40, left: 56 };
+const HEIGHT = 400;
+const M = { top: 24, right: 24, bottom: 40, left: 56 };
 
 function ticks(min: number, max: number, count: number): number[] {
   const span = max - min;
@@ -95,17 +95,20 @@ export function Timeline({ points, cumulative, measure, unit, conflict }: { poin
   return (
     <div ref={ref} className="relative">
       <svg width={width} height={HEIGHT} role="img" aria-label={`${measure} by trial completion date, ${dated.length} trial comparisons`}>
+        {years.map((yr) => (
+          <line key={`g${yr}`} x1={x(`${yr}-01-01`)} x2={x(`${yr}-01-01`)} y1={M.top} y2={HEIGHT - M.bottom} stroke="var(--border)" strokeWidth={1} />
+        ))}
         {yTicks.map((v) => (
           <g key={v}>
-            <line x1={M.left} x2={width - M.right} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
             <text x={M.left - 8} y={y(v) + 4} textAnchor="end" fontSize={12} fill="var(--text-muted)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</text>
           </g>
         ))}
         {years.map((yr) => (
-          <text key={yr} x={x(`${yr}-01-01`)} y={HEIGHT - 16} textAnchor="middle" fontSize={12} fill="var(--text-muted)" style={{ fontVariantNumeric: 'tabular-nums' }}>{yr}</text>
+          <text key={yr} x={x(`${yr}-01-01`)} y={HEIGHT - 16} textAnchor="middle" fontSize={14} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{yr}</text>
         ))}
         <line x1={M.left} x2={width - M.right} y1={y(0)} y2={y(0)} stroke="var(--text)" strokeWidth={1} />
-        <text x={width - M.right} y={y(0) - 6} textAnchor="end" fontSize={12} fill="var(--text-muted)">Null</text>
+        <text x={M.left + 8} y={y(0) - 6} fontSize={12} fill="var(--text-muted)">No Effect</text>
+        <text x={M.left - 8} y={M.top - 4} textAnchor="end" fontSize={12} fill="var(--text-muted)">{ratio ? measure : unit ?? measure}</text>
         {band && <path d={band} fill="var(--mark)" fillOpacity={0.1} />}
         {pooledLine.length > 1 && <path d={`M${pooledLine.map((c) => `${x(c.date!)},${y(c.theta)}`).join('L')}`} fill="none" stroke="var(--mark)" strokeWidth={2} strokeLinejoin="round" />}
         {dated.map((p, i) => {
@@ -136,7 +139,7 @@ export function Timeline({ points, cumulative, measure, unit, conflict }: { poin
         </div>
       )}
       <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
-        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-mark" />Trial, 95% CI</li>
+        <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-mark" />Trial</li>
         <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent" />In Conflict</li>
         <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full border-2 border-mark" />Terminated</li>
         {pooledLine.length > 1 && <li className="flex items-center gap-2"><span className="h-[2px] w-4 bg-mark" />Cumulative Pooled</li>}

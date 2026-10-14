@@ -16,7 +16,7 @@ export default async function WatchlistsPage() {
   for (const c of contradictions.items) for (const a of c.agents) if (!a.id.startsWith('?')) agents.set(a.id, a);
   return (
     <>
-      <PageHeader title="Watchlists" meta="Alerts on New Snapshots" />
+      <PageHeader title="Watchlists" />
       <Watchlists
         endpoints={endpoints.filter((e) => !e.abstract && e.records > 0).map((e) => ({ id: e.id, label: e.label }))}
         agents={[...agents.values()].sort((a, b) => a.label.localeCompare(b.label))}

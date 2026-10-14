@@ -36,7 +36,7 @@ const config: Config = {
     fontWeight: { normal: '400', medium: '500', bold: '700' },
     borderRadius: { none: '0', sm: '4px', DEFAULT: '8px', full: '9999px' },
     extend: {
-      fontFamily: { sans: ['var(--font-sans)', 'system-ui', 'sans-serif'], mono: ['var(--font-mono)', 'ui-monospace', 'monospace'] },
+      fontFamily: { sans: ['var(--font-sans)', 'system-ui', 'sans-serif'], display: ['var(--font-display)', 'Georgia', 'serif'], mono: ['var(--font-mono)', 'ui-monospace', 'monospace'] },
       maxWidth: { page: '1200px', prose: '72ch' },
       boxShadow: { float: '0 8px 32px rgb(0 0 0 / 0.18)' },
     },

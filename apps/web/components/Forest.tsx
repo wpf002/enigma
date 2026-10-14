@@ -86,7 +86,7 @@ export function Forest({ rows, measure, unit }: { rows: ForestRow[]; measure: st
           <div key={r.key} role="row" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-border py-2 sm:grid-cols-[minmax(0,3fr)_minmax(0,5fr)_minmax(0,3fr)]">
             <div role="cell" className="col-span-2 min-w-0 truncate sm:col-span-1">{r.href ? <Link href={r.href} className="link">{label}</Link> : label}</div>
             <div role="cell"><Marks r={r} a={a} measure={measure} /></div>
-            <div role="cell" className="whitespace-nowrap text-right font-mono">
+            <div role="cell" className="whitespace-nowrap text-right">
               <span className="font-medium">{a.fmt(r.value)}</span>
               <span className="text-muted"> ({r.ciLow === null ? 'n/a' : a.fmt(r.ciLow)}, {r.ciHigh === null ? 'n/a' : a.fmt(r.ciHigh)})</span>
             </div>
@@ -95,7 +95,7 @@ export function Forest({ rows, measure, unit }: { rows: ForestRow[]; measure: st
       })}
       <div className="grid gap-4 pt-2 text-xs text-muted sm:grid-cols-[minmax(0,3fr)_minmax(0,5fr)_minmax(0,3fr)]">
         <div>{measure}{unit && !a.ratio ? `, ${unit}` : ''}{a.ratio ? ', Log Scale' : ''}</div>
-        <div className="relative hidden h-4 font-mono sm:block">
+        <div className="relative hidden h-4 sm:block">
           {null_ > 0.16 && <span className="absolute left-0">{a.fmt(a.ends[0])}</span>}
           <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${Math.max(4, Math.min(96, null_ * 100))}%` }}>{a.ratio ? '1' : '0'}</span>
           {null_ < 0.84 && <span className="absolute right-0">{a.fmt(a.ends[1])}</span>}
